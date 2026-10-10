@@ -1,0 +1,6 @@
+{
+  "name": "TruthLens Verify",
+  "description": "Multilingual civic fact-checking and evidence investigation engine verifying claims across official records and news archives.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
