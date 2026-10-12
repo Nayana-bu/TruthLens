@@ -100,7 +100,7 @@ export const DossierModal: React.FC<DossierModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4 overflow-y-auto">
       <div 
-        className="bg-white w-full max-w-2xl max-h-[92vh] sm:rounded-2xl rounded-t-2xl shadow-2xl flex flex-col overflow-hidden relative animate-in fade-in slide-in-from-bottom duration-200"
+        className="bg-white w-full max-w-3xl max-h-[92vh] sm:rounded-2xl rounded-t-2xl shadow-2xl flex flex-col overflow-hidden relative animate-in fade-in slide-in-from-bottom duration-200 border border-[#e4e9f4]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top thick accent bar */}
@@ -139,7 +139,7 @@ export const DossierModal: React.FC<DossierModalProps> = ({
                   title={`Speak in ${lang === 'kn' ? 'Kannada' : lang === 'hi' ? 'Hindi' : 'English'}`}
                   className={`h-7 px-2.5 text-xs font-semibold rounded-full transition-all flex items-center gap-1 ${
                     selectedLang === lang
-                      ? 'bg-[#000000] text-white shadow-xs'
+                      ? 'bg-[#0b1c30] text-white shadow-xs'
                       : 'text-[#45464d] hover:text-[#0b1c30]'
                   }`}
                 >
@@ -165,7 +165,7 @@ export const DossierModal: React.FC<DossierModalProps> = ({
         <div className="p-4 sm:p-6 overflow-y-auto space-y-5">
           {/* 1. FIRST SHOW CLEARLY: WHETHER IT IS FAKE OR REAL */}
           <div
-            className={`rounded-2xl p-4 sm:p-5 border-2 shadow-lg relative overflow-hidden transition-all ${
+            className={`rounded-xl p-3.5 border relative overflow-hidden transition-all ${
               isFake
                 ? 'bg-[#fff1f2] border-[#f43f5e] text-[#9f1239]'
                 : isMisleading
@@ -250,7 +250,7 @@ export const DossierModal: React.FC<DossierModalProps> = ({
           </div>
 
           {/* 2. TEXT-TO-SPEECH FUNCTIONALITY: TRIGGERS ONLY WHEN USER SELECTS ENGLISH, HINDI, OR KANNADA */}
-          <div className="bg-[#131b2e] text-white rounded-2xl p-4 sm:p-5 shadow-lg flex flex-col gap-3.5 border border-[#213145]">
+          <div className="bg-[#0b1c30] text-white rounded-xl p-3.5 flex flex-col gap-3 border border-[#1a2d4d]">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-full bg-[#4059aa] flex items-center justify-center text-white flex-shrink-0">
@@ -633,7 +633,7 @@ export const DossierModal: React.FC<DossierModalProps> = ({
             <button
               type="button"
               onClick={handleCopyWhatsApp}
-              className="px-3.5 py-2 rounded-lg bg-[#000000] hover:bg-[#131b2e] text-white text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-all shadow-sm"
+              className="px-3.5 py-2 rounded-lg bg-[#4059aa] hover:bg-[#334a91] text-white text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-all shadow-sm"
             >
               <span className="material-symbols-outlined text-[16px]">share</span>
               <span>Share Debunk</span>

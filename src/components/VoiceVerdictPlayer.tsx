@@ -68,28 +68,28 @@ export const VoiceVerdictPlayer: React.FC<VoiceVerdictPlayerProps> = ({
   const isReal = dossier.clearVerdictStatus === 'REAL' || dossier.verdict === 'verified_true';
 
   return (
-    <div className="flex flex-col gap-3.5 w-full">
+    <div className="flex flex-col gap-3 w-full">
       {/* 1. CRYSTAL-CLEAR STATUS: FIRST SHOW CLEARLY WHETHER IT IS FAKE OR REAL */}
       <div
-        className={`rounded-2xl p-4 sm:p-5 border-2 shadow-lg relative overflow-hidden transition-all ${
+        className={`rounded-xl p-3.5 border relative overflow-hidden transition-all ${
           isFake
-            ? 'bg-[#fff1f2] border-[#f43f5e] text-[#9f1239]'
+            ? 'bg-[#fff1f2] border-[#fecdd3] text-[#9f1239]'
             : isMisleading
-            ? 'bg-[#fffbeb] border-[#f59e0b] text-[#92400e]'
-            : 'bg-[#ecfdf5] border-[#10b981] text-[#065f46]'
+            ? 'bg-[#fffbeb] border-[#fde68a] text-[#92400e]'
+            : 'bg-[#ecfdf5] border-[#a7f3d0] text-[#065f46]'
         }`}
       >
         {/* Top thick accent bar */}
         <div
-          className={`absolute top-0 left-0 right-0 h-2 ${
+          className={`absolute top-0 left-0 right-0 h-1.5 ${
             isFake ? 'bg-[#e11d48]' : isMisleading ? 'bg-[#d97706]' : 'bg-[#059669]'
           }`}
         />
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-          <div className="flex items-start gap-3.5">
+          <div className="flex items-start gap-3">
             <span
-              className={`material-symbols-outlined text-[42px] sm:text-[48px] flex-shrink-0 mt-0.5 ${
+              className={`material-symbols-outlined text-[32px] sm:text-[36px] flex-shrink-0 mt-0.5 ${
                 isFake ? 'text-[#e11d48]' : isMisleading ? 'text-[#d97706]' : 'text-[#059669]'
               }`}
             >
@@ -98,9 +98,9 @@ export const VoiceVerdictPlayer: React.FC<VoiceVerdictPlayerProps> = ({
 
             <div>
               {/* GIANT VERDICT HEADER */}
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <span
-                  className={`font-['Plus Jakarta Sans'] font-black text-xl sm:text-2xl tracking-tight uppercase px-3 py-1 rounded-lg shadow-sm ${
+                  className={`font-['Plus Jakarta Sans'] font-extrabold text-base sm:text-lg tracking-tight uppercase px-2.5 py-0.5 rounded-md ${
                     isFake
                       ? 'bg-[#e11d48] text-white'
                       : isMisleading
@@ -133,7 +133,7 @@ export const VoiceVerdictPlayer: React.FC<VoiceVerdictPlayerProps> = ({
               </div>
 
               {/* Direct Verdict Summary */}
-              <p className="font-['Plus Jakarta Sans'] font-bold text-sm sm:text-base mt-2 text-[#0b1c30] leading-snug">
+              <p className="font-['Plus Jakarta Sans'] font-semibold text-sm mt-1.5 text-[#0b1c30] leading-snug">
                 {isFake
                   ? '🚨 WARNING: This claim is completely FALSE. Do NOT forward or click links.'
                   : isMisleading
@@ -167,7 +167,7 @@ export const VoiceVerdictPlayer: React.FC<VoiceVerdictPlayerProps> = ({
               <button
                 type="button"
                 onClick={() => setShowReportModal(true)}
-                className="py-2 px-3.5 rounded-xl bg-[#ba1a1a] hover:bg-[#93000a] text-white text-xs sm:text-sm font-bold flex items-center gap-1.5 shadow-md active:scale-95 transition-all"
+                className="py-2 px-3.5 rounded-lg bg-[#ba1a1a] hover:bg-[#93000a] text-white text-xs sm:text-sm font-bold flex items-center gap-1.5 shadow-sm active:scale-95 transition-all whitespace-nowrap"
               >
                 <span className="material-symbols-outlined text-[18px]">report_problem</span>
                 <span>🚨 Report Fake News</span>
@@ -181,7 +181,7 @@ export const VoiceVerdictPlayer: React.FC<VoiceVerdictPlayerProps> = ({
       </div>
 
       {/* 2. DEDICATED INDIVIDUAL LANGUAGE VOICE PLAYER (TALK ONLY WHEN CLICKED) */}
-      <div className="bg-[#131b2e] text-white rounded-2xl p-4 sm:p-5 shadow-lg flex flex-col gap-3.5 border border-[#213145]">
+      <div className="bg-[#0b1c30] text-white rounded-xl p-3.5 flex flex-col gap-3 border border-[#1a2d4d]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-[#4059aa] flex items-center justify-center text-white flex-shrink-0">
@@ -208,12 +208,12 @@ export const VoiceVerdictPlayer: React.FC<VoiceVerdictPlayerProps> = ({
         </div>
 
         {/* 3 Explicit Language Audio Buttons */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-3 gap-2">
           {/* Button 1: Kannada (ಕನ್ನಡ) */}
           <button
             type="button"
             onClick={() => handleSingleLanguageSpeak('kn')}
-            className={`py-3 px-3 rounded-xl font-['Noto_Sans_Kannada'] text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 ${
+            className={`py-2.5 px-2 rounded-lg font-['Noto_Sans_Kannada'] text-[11px] sm:text-xs font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95 ${
               isPlaying && activeSpeechLang === 'kn'
                 ? 'bg-[#e11d48] text-white ring-2 ring-white scale-[1.02]'
                 : 'bg-[#dce1ff] text-[#00164e] hover:bg-white hover:text-black'
@@ -231,7 +231,7 @@ export const VoiceVerdictPlayer: React.FC<VoiceVerdictPlayerProps> = ({
           <button
             type="button"
             onClick={() => handleSingleLanguageSpeak('hi')}
-            className={`py-3 px-3 rounded-xl font-['Noto_Sans_Devanagari'] text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 ${
+            className={`py-2.5 px-2 rounded-lg font-['Noto_Sans_Devanagari'] text-[11px] sm:text-xs font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95 ${
               isPlaying && activeSpeechLang === 'hi'
                 ? 'bg-[#e11d48] text-white ring-2 ring-white scale-[1.02]'
                 : 'bg-[#fed7aa] text-[#7c2d12] hover:bg-white hover:text-black'
@@ -249,7 +249,7 @@ export const VoiceVerdictPlayer: React.FC<VoiceVerdictPlayerProps> = ({
           <button
             type="button"
             onClick={() => handleSingleLanguageSpeak('en')}
-            className={`py-3 px-3 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 ${
+            className={`py-2.5 px-2 rounded-lg text-[11px] sm:text-xs font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95 ${
               isPlaying && activeSpeechLang === 'en'
                 ? 'bg-[#e11d48] text-white ring-2 ring-white scale-[1.02]'
                 : 'bg-[#3f465c] text-white hover:bg-[#565e74]'
@@ -312,7 +312,7 @@ export const VoiceVerdictPlayer: React.FC<VoiceVerdictPlayerProps> = ({
       </div>
 
       {/* 3. VERIFIED EVIDENCES AND PRIMARY SOURCES */}
-      <div className="bg-white rounded-2xl p-4 sm:p-5 border border-[#e5eeff] shadow-sm space-y-3">
+      <div className="bg-white rounded-xl p-3.5 border border-[#e4e9f4] space-y-3">
         <div className="flex items-center justify-between border-b border-[#f1f5f9] pb-2.5">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-[20px] text-[#4059aa]">
@@ -330,11 +330,11 @@ export const VoiceVerdictPlayer: React.FC<VoiceVerdictPlayerProps> = ({
         </div>
 
         {/* List of Evidence Sources */}
-        <div className="space-y-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {dossier.sources.map((src, idx) => (
             <div
               key={idx}
-              className="p-3 rounded-xl border border-[#e5eeff] bg-[#f8f9ff] flex flex-col gap-1 shadow-2xs"
+              className="p-2.5 rounded-lg border border-[#e4e9f4] bg-[#f7f9fd] flex flex-col gap-1"
             >
               <div className="flex items-center justify-between gap-2">
                 <span className="font-['Plus Jakarta Sans'] font-bold text-xs sm:text-sm text-[#0b1c30]">

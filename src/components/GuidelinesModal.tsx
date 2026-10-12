@@ -83,7 +83,7 @@ export const GuidelinesModal: React.FC<GuidelinesModalProps> = ({ onClose }) => 
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-lg bg-[#000000] text-white text-xs font-semibold hover:bg-[#131b2e]"
+              className="px-4 py-2 rounded-lg bg-[#4059aa] text-white text-xs font-semibold hover:bg-[#334a91]"
             >
               Understood
             </button>
