@@ -22,7 +22,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
         </div>
 
         <div className="flex flex-col items-center py-4 text-center">
-          <div className="w-16 h-16 rounded-full bg-[#0b1c30] text-white flex items-center justify-center shadow-md mb-2">
+          <div className="w-16 h-16 rounded-full bg-[#000000] text-white flex items-center justify-center shadow-md mb-2">
             <span className="material-symbols-outlined text-[32px]">person</span>
           </div>
           <h4 className="font-['Plus Jakarta Sans'] font-bold text-base text-[#0b1c30]">
@@ -67,7 +67,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ onClose }) => {
           <button
             type="button"
             onClick={onClose}
-            className="w-full py-2 rounded-lg bg-[#4059aa] text-white text-xs font-semibold hover:bg-[#334a91]"
+            className="w-full py-2 rounded-lg bg-[#000000] text-white text-xs font-semibold hover:bg-[#131b2e]"
           >
             Done
           </button>

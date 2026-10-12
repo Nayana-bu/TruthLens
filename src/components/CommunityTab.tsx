@@ -61,7 +61,7 @@ export const CommunityTab: React.FC<CommunityTabProps> = ({ currentLang }) => {
   };
 
   return (
-    <div className="flex flex-col w-full max-w-7xl mx-auto px-4 lg:px-6 py-4 lg:py-5 gap-4">
+    <div className="flex flex-col w-full max-w-2xl mx-auto px-4 py-4 gap-6">
       {/* Community Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -69,7 +69,7 @@ export const CommunityTab: React.FC<CommunityTabProps> = ({ currentLang }) => {
             <span className="material-symbols-outlined text-[14px]">groups_2</span>
             <span>Civic Fact Network</span>
           </div>
-          <h1 className="font-['Plus Jakarta Sans'] text-xl sm:text-2xl font-bold text-[#0b1c30]">
+          <h1 className="font-['Plus Jakarta Sans'] text-2xl font-bold text-[#0b1c30]">
             Community Verification Collective
           </h1>
           <p className="text-xs text-[#45464d] mt-0.5">
@@ -80,7 +80,7 @@ export const CommunityTab: React.FC<CommunityTabProps> = ({ currentLang }) => {
         <button
           type="button"
           onClick={() => setShowSubmitModal(true)}
-          className="h-9 px-3.5 rounded-lg bg-[#4059aa] text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm hover:bg-[#334a91] transition-colors flex-shrink-0"
+          className="h-9 px-3.5 rounded-lg bg-[#000000] text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm hover:bg-[#131b2e] transition-colors flex-shrink-0"
         >
           <span className="material-symbols-outlined text-[16px]">add_circle</span>
           <span className="hidden sm:inline">Submit Forward</span>
@@ -89,19 +89,19 @@ export const CommunityTab: React.FC<CommunityTabProps> = ({ currentLang }) => {
 
       {/* Community Impact Stats */}
       <div className="grid grid-cols-3 gap-2">
-        <div className="bg-white p-3 rounded-xl border border-[#e4e9f4] text-center shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+        <div className="bg-white p-3 rounded-xl border border-[#e5eeff] text-center shadow-2xs">
           <span className="font-['Plus Jakarta Sans'] font-extrabold text-lg text-[#0b1c30] block">
             14,289
           </span>
           <span className="text-[10px] text-[#76777d]">Debunked Claims</span>
         </div>
-        <div className="bg-white p-3 rounded-xl border border-[#e4e9f4] text-center shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+        <div className="bg-white p-3 rounded-xl border border-[#e5eeff] text-center shadow-2xs">
           <span className="font-['Plus Jakarta Sans'] font-extrabold text-lg text-[#16a34a] block">
             1.2M+
           </span>
           <span className="text-[10px] text-[#76777d]">Citizens Shielded</span>
         </div>
-        <div className="bg-white p-3 rounded-xl border border-[#e4e9f4] text-center shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+        <div className="bg-white p-3 rounded-xl border border-[#e5eeff] text-center shadow-2xs">
           <span className="font-['Plus Jakarta Sans'] font-extrabold text-lg text-[#4059aa] block">
             48
           </span>
@@ -109,9 +109,8 @@ export const CommunityTab: React.FC<CommunityTabProps> = ({ currentLang }) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
       {/* Claims Under Peer Audit */}
-      <div className="lg:col-span-7 flex flex-col gap-3">
+      <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <h2 className="font-['Plus Jakarta Sans'] font-bold text-base text-[#0b1c30] flex items-center gap-1.5">
             <span className="material-symbols-outlined text-[18px] text-[#4059aa]">how_to_vote</span>
@@ -132,7 +131,7 @@ export const CommunityTab: React.FC<CommunityTabProps> = ({ currentLang }) => {
             return (
               <div
                 key={sub.id}
-                className="bg-white p-3.5 rounded-xl border border-[#e4e9f4] shadow-[0_1px_2px_rgba(15,23,42,0.04)] flex flex-col gap-3 relative"
+                className="bg-white p-4 rounded-xl border border-[#e5eeff] shadow-sm flex flex-col gap-3 relative"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -201,7 +200,7 @@ export const CommunityTab: React.FC<CommunityTabProps> = ({ currentLang }) => {
       </div>
 
       {/* Top Fact-Checking Contributors Leaderboard */}
-      <div className="lg:col-span-5 bg-white p-4 rounded-xl border border-[#e4e9f4] shadow-[0_1px_2px_rgba(15,23,42,0.04)] flex flex-col gap-3">
+      <div className="bg-white p-4 sm:p-5 rounded-xl border border-[#e5eeff] shadow-sm flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <h2 className="font-['Plus Jakarta Sans'] font-bold text-base text-[#0b1c30] flex items-center gap-1.5">
             <span className="material-symbols-outlined text-[18px] text-[#eab308]">military_tech</span>
@@ -241,7 +240,6 @@ export const CommunityTab: React.FC<CommunityTabProps> = ({ currentLang }) => {
             </div>
           ))}
         </div>
-      </div>
       </div>
 
       {/* Submit Claim Modal */}
@@ -330,7 +328,7 @@ export const CommunityTab: React.FC<CommunityTabProps> = ({ currentLang }) => {
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 rounded-lg bg-[#4059aa] text-white text-xs font-semibold hover:bg-[#334a91] shadow-sm"
+                    className="px-4 py-2 rounded-lg bg-[#000000] text-white text-xs font-semibold hover:bg-[#131b2e] shadow-sm"
                   >
                     Submit for Investigation
                   </button>

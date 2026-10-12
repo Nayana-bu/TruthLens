@@ -79,7 +79,7 @@ export default function App() {
   };
 
   return (
-    <div className="bg-[#f4f6fb] text-[#0b1c30] min-h-screen flex flex-col font-['Inter'] relative selection:bg-[#dce1ff] selection:text-[#00164e]">
+    <div className="bg-[#f8f9ff] text-[#0b1c30] min-h-screen flex flex-col font-['Inter'] relative selection:bg-[#dce1ff] selection:text-[#00164e]">
       {/* Header */}
       <Header
         currentLang={currentLang}
@@ -89,7 +89,7 @@ export default function App() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 w-full pt-14 pb-24 lg:pl-[240px] lg:pb-6">
+      <main className="flex-1 w-full pt-16 pb-24">
         {activeTab === 'verify' && (
           <VerifyTab
             currentLang={currentLang}

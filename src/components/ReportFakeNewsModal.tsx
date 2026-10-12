@@ -98,7 +98,7 @@ export const ReportFakeNewsModal: React.FC<ReportFakeNewsModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="w-full py-2.5 rounded-lg bg-[#4059aa] text-white font-semibold text-xs sm:text-sm hover:bg-[#334a91] transition-colors"
+              className="w-full py-2.5 rounded-lg bg-[#000000] text-white font-semibold text-xs sm:text-sm hover:bg-[#131b2e] transition-colors"
             >
               Done & Return
             </button>

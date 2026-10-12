@@ -47,14 +47,14 @@ export const ExploreFeedTab: React.FC<ExploreFeedTabProps> = ({
   });
 
   return (
-    <div className="flex flex-col w-full max-w-7xl mx-auto px-4 lg:px-6 py-4 lg:py-5 gap-4">
+    <div className="flex flex-col w-full max-w-2xl mx-auto px-4 py-4 gap-5">
       {/* Feed Header */}
       <div>
         <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#dce1ff] text-[#00164e] font-['Inter'] text-[11px] font-semibold mb-1">
           <span className="material-symbols-outlined text-[14px]">newspaper</span>
           <span>Live Verification Feed</span>
         </div>
-        <h1 className="font-['Plus Jakarta Sans'] text-xl sm:text-2xl font-bold text-[#0b1c30]">
+        <h1 className="font-['Plus Jakarta Sans'] text-2xl font-bold text-[#0b1c30]">
           Debunked Viral Claims Archive
         </h1>
         <p className="text-xs text-[#45464d] mt-0.5">
@@ -72,7 +72,7 @@ export const ExploreFeedTab: React.FC<ExploreFeedTabProps> = ({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t.searchClaims}
-          className="w-full pl-10 pr-4 py-2.5 bg-white rounded-xl border border-[#e4e9f4] text-sm text-[#0b1c30] placeholder:text-[#94a3b8] focus:outline-none focus:ring-2 focus:ring-[#4059aa]/20 focus:border-[#4059aa]"
+          className="w-full pl-10 pr-4 py-2.5 bg-white rounded-xl border border-[#cbd5e1] text-sm text-[#0b1c30] placeholder:text-[#94a3b8] focus:outline-none focus:ring-2 focus:ring-[#4059aa]/20 focus:border-[#4059aa] shadow-2xs"
         />
         {search && (
           <button
@@ -94,7 +94,7 @@ export const ExploreFeedTab: React.FC<ExploreFeedTabProps> = ({
             onClick={() => setSelectedCategory(cat.id)}
             className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
               selectedCategory === cat.id
-                ? 'bg-[#0b1c30] text-white shadow-xs'
+                ? 'bg-[#000000] text-white shadow-xs'
                 : 'bg-white text-[#45464d] border border-[#cbd5e1] hover:bg-[#f1f5f9]'
             }`}
           >
@@ -122,9 +122,9 @@ export const ExploreFeedTab: React.FC<ExploreFeedTabProps> = ({
       </div>
 
       {/* Dossier Cards List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="flex flex-col gap-3">
         {filtered.length === 0 ? (
-          <div className="md:col-span-2 bg-white rounded-xl p-8 text-center border border-[#e4e9f4] flex flex-col items-center justify-center gap-2">
+          <div className="bg-white rounded-xl p-8 text-center border border-[#e5eeff] flex flex-col items-center justify-center gap-2">
             <span className="material-symbols-outlined text-[36px] text-[#76777d]">
               find_in_page
             </span>
@@ -140,7 +140,7 @@ export const ExploreFeedTab: React.FC<ExploreFeedTabProps> = ({
               <div
                 key={item.id}
                 onClick={() => onInspectDossier(item)}
-                className="bg-white rounded-xl p-3.5 hover:border-[#c5d0f5] transition-all flex flex-col gap-2 relative overflow-hidden border border-[#e4e9f4] cursor-pointer group shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
+                className="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-all flex flex-col gap-2 relative overflow-hidden border border-[#e5eeff] cursor-pointer group"
               >
                 <div
                   className={`absolute left-0 top-0 bottom-0 w-1 ${

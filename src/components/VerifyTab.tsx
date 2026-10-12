@@ -164,7 +164,7 @@ export const VerifyTab: React.FC<VerifyTabProps> = ({
   };
 
   return (
-    <div className="flex flex-col w-full max-w-7xl mx-auto px-4 lg:px-6 py-4 lg:py-5 gap-4">
+    <div className="flex flex-col w-full max-w-2xl mx-auto px-4 py-4 gap-6">
       {/* Hidden File Input for Real Screenshots */}
       <input
         type="file"
@@ -175,25 +175,21 @@ export const VerifyTab: React.FC<VerifyTabProps> = ({
       />
 
       {/* Hero / Intro Narrative */}
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
-        <div className="flex flex-col gap-1 min-w-0">
-          <div className="inline-flex items-center gap-1.5 self-start px-2.5 py-0.5 rounded-full bg-[#dce1ff] text-[#00164e] font-['Inter'] text-[11px] font-semibold">
-            <span className="material-symbols-outlined text-[14px]">shield</span>
-            <span>{t.multilingualBadge}</span>
-          </div>
-          <h1 className="font-['Plus Jakarta Sans'] text-xl sm:text-2xl font-extrabold text-[#0b1c30] tracking-tight">
-            {t.heroTitle}
-          </h1>
-          <p className="font-['Inter'] text-xs sm:text-sm text-[#64748b] leading-relaxed max-w-2xl">
-            {t.heroSub}
-          </p>
+      <div className="flex flex-col gap-1.5">
+        <div className="inline-flex items-center gap-1.5 self-start px-2.5 py-0.5 rounded-full bg-[#dce1ff] text-[#00164e] font-['Inter'] text-[11px] font-semibold shadow-xs">
+          <span className="material-symbols-outlined text-[14px]">shield</span>
+          <span>{t.multilingualBadge}</span>
         </div>
+        <h1 className="font-['Plus Jakarta Sans'] text-2xl sm:text-3xl font-extrabold text-[#0b1c30] tracking-tight mt-1">
+          {t.heroTitle}
+        </h1>
+        <p className="font-['Inter'] text-sm text-[#45464d] leading-relaxed">
+          {t.heroSub}
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-      <div className="lg:col-span-7 flex flex-col gap-3">
       {/* Submission Mode Segmented Pill Tabs */}
-      <div className="bg-[#eef2fb] rounded-full p-1 flex items-center border border-[#e0e7f5]">
+      <div className="bg-[#e5eeff] rounded-full p-1 flex items-center shadow-inner border border-[#d3e4fe]">
         <button
           type="button"
           onClick={() => setActiveTab('text')}
@@ -238,7 +234,7 @@ export const VerifyTab: React.FC<VerifyTabProps> = ({
       </div>
 
       {/* Active Input Workspace Card */}
-      <div className="bg-white rounded-xl p-4 flex flex-col gap-3 relative overflow-hidden border border-[#e4e9f4] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      <div className="bg-white rounded-xl shadow-md p-4 sm:p-5 flex flex-col gap-4 relative overflow-hidden border border-[#e5eeff]">
         {/* Ambient Card Accent */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#4059aa] via-[#8fa7fe] to-[#dce1ff]" />
 
@@ -308,9 +304,9 @@ export const VerifyTab: React.FC<VerifyTabProps> = ({
                 if (validationError) setValidationError(null);
               }}
               placeholder={getPlaceholder()}
-              rows={3}
+              rows={4}
               maxLength={2000}
-              className="w-full bg-[#f7f9fd] text-[#0b1c30] placeholder:text-[#94a3b8] p-3 rounded-lg font-['Inter'] text-sm resize-none focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#4059aa]/25 border border-[#e0e7f5] transition-colors leading-relaxed"
+              className="w-full bg-[#eff4ff] text-[#0b1c30] placeholder:text-[#76777d] p-3.5 rounded-lg font-['Inter'] text-sm resize-none focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#4059aa]/30 border border-[#d3e4fe] transition-colors leading-relaxed shadow-inner"
             />
           </div>
 
@@ -390,7 +386,7 @@ export const VerifyTab: React.FC<VerifyTabProps> = ({
           type="button"
           disabled={isInvestigating}
           onClick={handleExecuteInvestigation}
-          className="w-full h-11 rounded-xl bg-[#4059aa] hover:bg-[#334a91] text-white font-['Plus Jakarta Sans'] font-bold text-sm sm:text-base flex items-center justify-center gap-2 shadow-[0_4px_12px_rgba(64,89,170,0.28)] transition-all active:scale-[0.99] group disabled:opacity-75 cursor-pointer"
+          className="w-full h-12 rounded-xl bg-[#000000] hover:bg-[#131b2e] text-white font-['Plus Jakarta Sans'] font-bold text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg transition-all active:scale-[0.99] group disabled:opacity-75 cursor-pointer"
         >
           {isInvestigating ? (
             <>
@@ -428,41 +424,17 @@ export const VerifyTab: React.FC<VerifyTabProps> = ({
           )}
         </button>
 
-      </div>
-      </div>
-
-      <div className="lg:col-span-5 flex flex-col gap-3">
-        {/* Community Audit Proof Counter */}
-        <div className="rounded-xl bg-white p-3.5 flex items-center justify-between gap-3 border border-[#e4e9f4] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#eef2fb] flex items-center justify-center text-[#4059aa] flex-shrink-0">
-              <span className="material-symbols-outlined text-[20px]">policy</span>
-            </div>
-            <div className="flex flex-col">
-              <span className="font-['Plus Jakarta Sans'] font-extrabold text-base text-[#0b1c30]">
-                {t.claimsRefutedCount}
-              </span>
-              <span className="font-['Inter'] text-xs text-[#64748b]">
-                {t.claimsRefutedDesc}
-              </span>
-            </div>
-          </div>
-          <div className="flex items-center text-[#4059aa]">
-            <span className="material-symbols-outlined text-[22px]">analytics</span>
-          </div>
-        </div>
-
         {/* Visual Context Enrichment: Forensic Source Radar */}
-        <div className="bg-white rounded-xl p-3.5 flex items-center justify-between border border-[#e4e9f4] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+        <div className="mt-1 bg-[#eff4ff] rounded-lg p-3 flex items-center justify-between border border-[#d3e4fe]">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-full bg-[#eef2fb] flex items-center justify-center text-[#4059aa]">
+            <div className="w-8 h-8 rounded-full bg-[#dce9ff] flex items-center justify-center text-[#4059aa]">
               <span className="material-symbols-outlined text-[18px]">travel_explore</span>
             </div>
             <div className="flex flex-col">
               <span className="font-['Inter'] text-xs font-bold text-[#0b1c30]">
                 {t.archiveSweepTitle}
               </span>
-              <span className="font-['Inter'] text-[11px] text-[#64748b]">
+              <span className="font-['Inter'] text-[11px] text-[#45464d]">
                 {t.archiveSweepSub}
               </span>
             </div>
@@ -471,10 +443,11 @@ export const VerifyTab: React.FC<VerifyTabProps> = ({
             verified
           </span>
         </div>
+      </div>
 
       {/* ACTIVE INVESTIGATION RUNNING ANIMATION */}
       {isInvestigating && (
-        <div className="rounded-xl p-4 bg-[#0b1c30] text-white border border-[#4059aa]/40 flex flex-col gap-3 animate-in fade-in">
+        <div className="rounded-2xl p-5 bg-[#00164e] text-white shadow-xl border border-[#4059aa]/40 flex flex-col gap-3 animate-in fade-in">
           <div className="flex items-center gap-3">
             <span className="material-symbols-outlined text-[28px] text-[#8fa7fe] animate-spin">
               sync
@@ -497,12 +470,10 @@ export const VerifyTab: React.FC<VerifyTabProps> = ({
           </div>
         </div>
       )}
-      </div>
-      </div>
 
       {/* LATEST VERIFIED CLAIM LIVE RESULT (CLEAR FAKE/REAL & VOICE IN KANNADA/HINDI) */}
       {latestDossier && !isInvestigating && (
-        <div className="flex flex-col gap-3 p-4 bg-white rounded-xl border border-[#c5d0f5] shadow-[0_1px_2px_rgba(15,23,42,0.04)] animate-in fade-in slide-in-from-top-3">
+        <div className="flex flex-col gap-3 p-4 bg-white rounded-2xl border-2 border-[#4059aa] shadow-lg animate-in fade-in slide-in-from-top-3">
           <div className="flex items-center justify-between pb-2 border-b border-[#e5eeff]">
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-[#10b981] animate-ping" />
@@ -567,7 +538,7 @@ export const VerifyTab: React.FC<VerifyTabProps> = ({
         </div>
 
         {/* Cards Stack */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="flex flex-col gap-3">
           {dossiersList.slice(0, 4).map((item) => {
             const isFalse = item.verdict === 'false' || item.clearVerdictStatus === 'FAKE';
             const isMisleading = item.verdict === 'misleading' || item.clearVerdictStatus === 'MISLEADING';
@@ -577,8 +548,8 @@ export const VerifyTab: React.FC<VerifyTabProps> = ({
               <div
                 key={item.id}
                 onClick={() => onInspectDossier(item)}
-                className={`bg-white rounded-xl p-3.5 hover:border-[#c5d0f5] transition-all flex flex-col gap-2 relative overflow-hidden border cursor-pointer group active:scale-[0.99] shadow-[0_1px_2px_rgba(15,23,42,0.04)] ${
-                  isUserItem ? 'border-[#8fa7fe] bg-[#f8faff]' : 'border-[#e4e9f4]'
+                className={`bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-all flex flex-col gap-2.5 relative overflow-hidden border cursor-pointer group active:scale-[0.99] ${
+                  isUserItem ? 'border-2 border-[#4059aa]/40 bg-[#f8faff]' : 'border-[#e5eeff]'
                 }`}
               >
                 {/* Left accent strip */}
@@ -624,7 +595,7 @@ export const VerifyTab: React.FC<VerifyTabProps> = ({
                   </span>
                 </div>
 
-                <h3 className="font-['Plus Jakarta Sans'] text-sm font-bold text-[#0b1c30] leading-snug group-hover:text-[#4059aa] transition-colors">
+                <h3 className="font-['Plus Jakarta Sans'] text-base font-bold text-[#0b1c30] leading-snug group-hover:text-[#4059aa] transition-colors">
                   {item.title}
                 </h3>
 
@@ -695,14 +666,34 @@ export const VerifyTab: React.FC<VerifyTabProps> = ({
         </div>
       </div>
 
+      {/* Community Audit Proof Counter */}
+      <div className="rounded-xl bg-[#e5eeff] p-4 flex items-center justify-between gap-3 shadow-xs border border-[#d3e4fe]">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[#0b1c30] shadow-sm flex-shrink-0">
+            <span className="material-symbols-outlined text-[20px]">policy</span>
+          </div>
+          <div className="flex flex-col">
+            <span className="font-['Plus Jakarta Sans'] font-extrabold text-base sm:text-lg text-[#0b1c30]">
+              {t.claimsRefutedCount}
+            </span>
+            <span className="font-['Inter'] text-xs text-[#45464d]">
+              {t.claimsRefutedDesc}
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center text-[#4059aa]">
+          <span className="material-symbols-outlined text-[22px]">analytics</span>
+        </div>
+      </div>
+
       {/* Sticky Investigation Launch Footer Bar */}
-      <div className="sticky bottom-16 pb-2 pt-2 bg-gradient-to-t from-[#f4f6fb] via-[#f4f6fb] to-transparent z-30 lg:hidden">
+      <div className="sticky bottom-16 pb-2 pt-2 bg-gradient-to-t from-[#f8f9ff] via-[#f8f9ff] to-transparent z-30">
         <div className="bg-white/95 backdrop-blur-md rounded-xl p-3 shadow-xl border border-[#d3e4fe] flex flex-col gap-2">
           <button
             type="button"
             disabled={isInvestigating}
             onClick={handleExecuteInvestigation}
-            className="w-full h-11 rounded-lg bg-[#4059aa] hover:bg-[#334a91] text-white font-['Plus Jakarta Sans'] font-bold text-sm sm:text-base flex items-center justify-center gap-2 shadow-[0_4px_12px_rgba(64,89,170,0.28)] transition-all active:scale-[0.99] group disabled:opacity-80 cursor-pointer"
+            className="w-full h-12 rounded-lg bg-[#000000] hover:bg-[#131b2e] text-white font-['Plus Jakarta Sans'] font-bold text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg transition-all active:scale-[0.99] group disabled:opacity-80 cursor-pointer"
           >
             {isInvestigating ? (
               <>
