@@ -3,6 +3,15 @@ import { ClaimDossier, Language } from '../types';
 import { UI_TRANSLATIONS } from '../data/mockData';
 import { ReportFakeNewsModal } from './ReportFakeNewsModal';
 import { speakText, stopSpeech } from '../utils/speechEngine';
+import {
+  getSourceName,
+  getSourceCategory,
+  getSourceStatusLabel,
+  getSourceDetails,
+  getEvidentiaryFindingsTitle,
+  getRecordCorroborationTitle,
+  getPrimarySourceActionLabel,
+} from '../utils/sourceTranslator';
 
 interface DossierModalProps {
   dossier: ClaimDossier | null;
@@ -96,6 +105,54 @@ export const DossierModal: React.FC<DossierModalProps> = ({
   const isFake = dossier.clearVerdictStatus === 'FAKE' || dossier.verdict === 'false';
   const isMisleading = dossier.clearVerdictStatus === 'MISLEADING' || dossier.verdict === 'misleading';
   const isReal = dossier.clearVerdictStatus === 'REAL' || dossier.verdict === 'verified_true';
+  const isPartly = dossier.clearVerdictStatus === 'PARTLY_TRUE' || dossier.verdict === 'partly_true';
+  const isContext = dossier.clearVerdictStatus === 'CONTEXT_MISSING' || dossier.verdict === 'context_missing';
+  const isUnverified = dossier.clearVerdictStatus === 'UNVERIFIED' || dossier.verdict === 'unverified' || (!isFake && !isMisleading && !isReal && !isPartly && !isContext);
+
+  const getModalAccentColor = () => {
+    if (isFake) return 'bg-[#e11d48]';
+    if (isMisleading) return 'bg-[#d97706]';
+    if (isPartly) return 'bg-[#ea580c]';
+    if (isContext) return 'bg-[#7c3aed]';
+    if (isReal) return 'bg-[#059669]';
+    return 'bg-[#475569]';
+  };
+
+  const getModalVerdictBoxClass = () => {
+    if (isFake) return 'bg-[#fff1f2] border-[#f43f5e] text-[#9f1239]';
+    if (isMisleading) return 'bg-[#fffbeb] border-[#f59e0b] text-[#92400e]';
+    if (isPartly) return 'bg-[#fff7ed] border-[#ea580c] text-[#9a3412]';
+    if (isContext) return 'bg-[#f5f3ff] border-[#8b5cf6] text-[#5b21b6]';
+    if (isReal) return 'bg-[#ecfdf5] border-[#10b981] text-[#065f46]';
+    return 'bg-[#f8fafc] border-[#94a3b8] text-[#334155]';
+  };
+
+  const getVerdictIcon = () => {
+    if (isFake) return 'cancel';
+    if (isMisleading) return 'warning';
+    if (isPartly) return 'published_with_changes';
+    if (isContext) return 'info';
+    if (isReal) return 'verified';
+    return 'help_outline';
+  };
+
+  const getVerdictIconColor = () => {
+    if (isFake) return 'text-[#e11d48]';
+    if (isMisleading) return 'text-[#d97706]';
+    if (isPartly) return 'text-[#ea580c]';
+    if (isContext) return 'text-[#7c3aed]';
+    if (isReal) return 'text-[#059669]';
+    return 'text-[#475569]';
+  };
+
+  const getHeaderBadgeClass = () => {
+    if (isFake) return 'bg-[#e11d48] text-white';
+    if (isMisleading) return 'bg-[#d97706] text-white';
+    if (isPartly) return 'bg-[#ea580c] text-white';
+    if (isContext) return 'bg-[#7c3aed] text-white';
+    if (isReal) return 'bg-[#059669] text-white';
+    return 'bg-[#475569] text-white';
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4 overflow-y-auto">
@@ -104,11 +161,7 @@ export const DossierModal: React.FC<DossierModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top thick accent bar */}
-        <div
-          className={`h-2 w-full ${
-            isFake ? 'bg-[#e11d48]' : isMisleading ? 'bg-[#d97706]' : 'bg-[#059669]'
-          }`}
-        />
+        <div className={`h-2 w-full ${getModalAccentColor()}`} />
 
         {/* Modal Header */}
         <div className="p-4 sm:p-5 border-b border-[#e5eeff] flex items-center justify-between bg-[#f8f9ff]">
@@ -165,41 +218,33 @@ export const DossierModal: React.FC<DossierModalProps> = ({
         <div className="p-4 sm:p-6 overflow-y-auto space-y-5">
           {/* 1. FIRST SHOW CLEARLY: WHETHER IT IS FAKE OR REAL */}
           <div
-            className={`rounded-2xl p-4 sm:p-5 border-2 shadow-lg relative overflow-hidden transition-all ${
-              isFake
-                ? 'bg-[#fff1f2] border-[#f43f5e] text-[#9f1239]'
-                : isMisleading
-                ? 'bg-[#fffbeb] border-[#f59e0b] text-[#92400e]'
-                : 'bg-[#ecfdf5] border-[#10b981] text-[#065f46]'
-            }`}
+            className={`rounded-2xl p-4 sm:p-5 border-2 shadow-lg relative overflow-hidden transition-all ${getModalVerdictBoxClass()}`}
           >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-start gap-3.5">
                 <span
-                  className={`material-symbols-outlined text-[44px] sm:text-[48px] flex-shrink-0 mt-0.5 ${
-                    isFake ? 'text-[#e11d48]' : isMisleading ? 'text-[#d97706]' : 'text-[#059669]'
-                  }`}
+                  className={`material-symbols-outlined text-[44px] sm:text-[48px] flex-shrink-0 mt-0.5 ${getVerdictIconColor()}`}
                 >
-                  {isFake ? 'cancel' : isMisleading ? 'warning' : 'verified'}
+                  {getVerdictIcon()}
                 </span>
 
                 <div>
                   {/* GIANT VERDICT HEADER */}
                   <div className="flex items-center gap-2 flex-wrap">
                     <span
-                      className={`font-['Plus Jakarta Sans'] font-black text-xl sm:text-2xl tracking-tight uppercase px-3.5 py-1 rounded-xl shadow-sm ${
-                        isFake
-                          ? 'bg-[#e11d48] text-white'
-                          : isMisleading
-                          ? 'bg-[#d97706] text-white'
-                          : 'bg-[#059669] text-white'
-                      }`}
+                      className={`font-['Plus Jakarta Sans'] font-black text-xl sm:text-2xl tracking-tight uppercase px-3.5 py-1 rounded-xl shadow-sm ${getHeaderBadgeClass()}`}
                     >
                       {isFake
                         ? '❌ FAKE NEWS'
                         : isMisleading
                         ? '⚠️ MISLEADING'
-                        : '✅ REAL & VERIFIED'}
+                        : isPartly
+                        ? '⚖️ PARTLY TRUE'
+                        : isContext
+                        ? 'ℹ️ CONTEXT MISSING'
+                        : isReal
+                        ? '✅ REAL & VERIFIED'
+                        : '🔍 UNVERIFIED'}
                     </span>
 
                     <span className="font-['Noto_Sans_Kannada'] font-bold text-sm sm:text-base px-2.5 py-0.5 rounded-full bg-white/90 border border-current shadow-2xs">
@@ -207,7 +252,13 @@ export const DossierModal: React.FC<DossierModalProps> = ({
                         ? 'ಸುಳ್ಳು ಸುದ್ದಿ'
                         : isMisleading
                         ? 'ದಾರಿತಪ್ಪಿಸುವ ಸುದ್ದಿ'
-                        : 'ಅಧಿಕೃತ ಸತ್ಯ'}
+                        : isPartly
+                        ? 'ಭಾಗಶಃ ಸತ್ಯ'
+                        : isContext
+                        ? 'ಸಂದರ್ಭದ ಕೊರತೆ'
+                        : isReal
+                        ? 'ಅಧಿಕೃತ ಸತ್ಯ'
+                        : 'ದೃಢೀಕರಿಸಲಾಗಿಲ್ಲ'}
                     </span>
 
                     <span className="font-['Noto_Sans_Devanagari'] font-bold text-sm sm:text-base px-2.5 py-0.5 rounded-full bg-white/90 border border-current shadow-2xs">
@@ -215,17 +266,55 @@ export const DossierModal: React.FC<DossierModalProps> = ({
                         ? 'फर्जी खबर'
                         : isMisleading
                         ? 'भ्रामक दावा'
-                        : 'सत्य खबर'}
+                        : isPartly
+                        ? 'आंशिक सत्य'
+                        : isContext
+                        ? 'संदर्भ का अभाव'
+                        : isReal
+                        ? 'सत्य खबर'
+                        : 'अपुष्ट दावा'}
                     </span>
                   </div>
 
                   {/* Direct Verdict Warning Summary */}
                   <p className="font-['Plus Jakarta Sans'] font-bold text-sm sm:text-base mt-2 text-[#0b1c30] leading-snug">
-                    {isFake
-                      ? '🚨 WARNING: This claim is completely FALSE. Do NOT forward or click links.'
-                      : isMisleading
-                      ? '⚠️ CAUTION: Outdated or manipulated information presented without correct context.'
-                      : '✅ CONFIRMED: Backed by primary official records and government gazettes.'}
+                    {selectedLang === 'kn' ? (
+                      isFake
+                        ? '🚨 ಎಚ್ಚರಿಕೆ: ಈ ಸುದ್ದಿ ಸಂಪೂರ್ಣ ಸುಳ್ಳಾಗಿದೆ. ಯಾವುದೇ ಲಿಂಕ್ ಕ್ಲಿಕ್ ಮಾಡಬೇಡಿ ಅಥವಾ ಫಾರ್ವರ್ಡ್ ಮಾಡಬೇಡಿ.'
+                        : isMisleading
+                        ? '⚠️ ಎಚ್ಚರಿಕೆ: ಹಳೆಯ ಅಥವಾ ತಿರುಚಿದ ಮಾಹಿತಿಯನ್ನು ಪ್ರಸ್ತುತ ಸುದ್ದಿ ಎಂದು ತಪ್ಪಾಗಿ ಹಂಚಿಕೊಳ್ಳಲಾಗುತ್ತಿದೆ.'
+                        : isPartly
+                        ? '⚖️ ಎಚ್ಚರಿಕೆ: ಈ ಸುದ್ದಿಯ ಕೆಲವು ಅಂಶಗಳು ಸತ್ಯವಾಗಿದ್ದರೂ, ಇತರ ವಿವರಗಳು ತಪ್ಪಾಗಿವೆ.'
+                        : isContext
+                        ? 'ℹ️ ಗಮನಿಸಿ: ಮಾಹಿತಿಯು ತಾಂತ್ರಿಕವಾಗಿ ಸರಿಯಾಗಿದ್ದರೂ, ಅಗತ್ಯ ಸಂದರ್ಭವನ್ನು ಮರೆಮಾಚಲಾಗಿದೆ.'
+                        : isReal
+                        ? '✅ ಅಧಿಕೃತ ದೃಢೀಕರಣ: ಸರ್ಕಾರಿ ಗೆಜೆಟ್ ಮತ್ತು ಪ್ರಾಥಮಿಕ ದಾಖಲೆಗಳಿಂದ ಸಾಬೀತಾದ ಸತ್ಯ.'
+                        : '🔍 ಗಮನಿಸಿ: ಸಾರ್ವಜನಿಕವಾಗಿ ಯಾವುದೇ ಅಧಿಕೃತ ಸಾಕ್ಷ್ಯ ಅಥವಾ ಖಂಡನೆ ಸಿಕ್ಕಿಲ್ಲ; ಇದು ದೃಢೀಕರಿಸಲಾಗಿಲ್ಲ (Unverified).'
+                    ) : selectedLang === 'hi' ? (
+                      isFake
+                        ? '🚨 चेतावनी: यह दावा पूरी तरह फर्जी है। कृपया इसे आगे फॉरवर्ड न करें या लिंक न खोलें।'
+                        : isMisleading
+                        ? '⚠️ सावधानी: पुरानी या अधूरी जानकारी को गलत संदर्भ में प्रस्तुत किया जा रहा है।'
+                        : isPartly
+                        ? '⚖️ ध्यान दें: यह दावा आंशिक रूप से सत्य है, लेकिन कुछ विवरण असत्यापित हैं।'
+                        : isContext
+                        ? 'ℹ️ ध्यान दें: महत्वपूर्ण संदर्भ गायब होने से भ्रामक धारणा उत्पन्न हो सकती है।'
+                        : isReal
+                        ? '✅ आधिकारिक पुष्टि: सरकारी राजपत्र एवं प्राथमिक अभिलेखों द्वारा प्रमाणित सत्य।'
+                        : '🔍 ध्यान दें: साक्ष्य के अभाव में यह दावा अपुष्ट (Unverified) है।'
+                    ) : (
+                      isFake
+                        ? '🚨 WARNING: This claim is completely FALSE. Contradicted by official records.'
+                        : isMisleading
+                        ? '⚠️ CAUTION: Outdated or manipulated information presented without correct context.'
+                        : isPartly
+                        ? '⚖️ NOTICE: Partly true with verified elements mixed with inaccurate details.'
+                        : isContext
+                        ? 'ℹ️ NOTICE: Technically accurate statements lacking crucial qualifying background.'
+                        : isReal
+                        ? '✅ CONFIRMED: Backed by primary official records and government gazettes.'
+                        : '🔍 UNVERIFIED: Insufficient public evidence exists to confirm or disprove this claim.'
+                    )}
                   </p>
                 </div>
               </div>
@@ -399,24 +488,32 @@ export const DossierModal: React.FC<DossierModalProps> = ({
             <div className="flex items-center justify-between">
               <h4 className="font-['Plus Jakarta Sans'] font-bold text-base text-[#0b1c30] flex items-center gap-1.5">
                 <span className="material-symbols-outlined text-[18px] text-[#4059aa]">fact_check</span>
-                Evidentiary Findings & Record Corroboration
+                <span>{getEvidentiaryFindingsTitle(selectedLang)}</span>
               </h4>
               <span className="text-xs text-[#4059aa] font-semibold bg-[#eff4ff] px-2.5 py-0.5 rounded-full border border-[#d3e4fe]">
-                {selectedLang === 'kn' ? 'ಕನ್ನಡ ವಿವರಣೆ' : selectedLang === 'hi' ? 'हिन्दी विवरण' : 'English Findings'}
+                {selectedLang === 'kn' ? 'ಕನ್ನಡ ಸಾಕ್ಷ್ಯಾಧಾರ' : selectedLang === 'hi' ? 'हिन्दी साक्ष्य' : 'English Findings'}
               </span>
             </div>
 
-            <p className="text-sm text-[#0b1c30] leading-relaxed bg-[#eff4ff] p-3.5 rounded-xl border border-[#d3e4fe]">
-              {dossier.debunkExplanation[selectedLang] || dossier.debunkExplanation.en}
-            </p>
+            <div className="bg-[#eff4ff] p-4 rounded-xl border border-[#d3e4fe] space-y-2">
+              <p className={`text-sm text-[#0b1c30] leading-relaxed ${
+                selectedLang === 'kn'
+                  ? "font-['Noto_Sans_Kannada'] font-medium text-[13.5px]"
+                  : selectedLang === 'hi'
+                  ? "font-['Noto_Sans_Devanagari'] font-medium text-[13.5px]"
+                  : ""
+              }`}>
+                {dossier.debunkExplanation[selectedLang] || dossier.debunkExplanation.en}
+              </p>
+            </div>
           </div>
 
-          {/* 5. Official Corroborating Repositories Grid (Evidences and Sources) */}
+          {/* 5. Official Corroborating Repositories Grid (Record Corroboration) */}
           <div className="space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <h4 className="font-['Plus Jakarta Sans'] font-bold text-sm text-[#0b1c30] flex items-center gap-1.5">
+              <h4 className="font-['Plus Jakarta Sans'] font-bold text-sm sm:text-base text-[#0b1c30] flex items-center gap-1.5">
                 <span className="material-symbols-outlined text-[18px] text-[#4059aa]">travel_explore</span>
-                Official Evidence Sources & Repositories ({dossier.sources.length})
+                <span>{getRecordCorroborationTitle(dossier.sources.length, selectedLang)}</span>
               </h4>
 
               {/* Google Search Data Grounding Badge */}
@@ -427,7 +524,13 @@ export const DossierModal: React.FC<DossierModalProps> = ({
                   <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
                   <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
                 </svg>
-                <span>Google Search Data Grounded</span>
+                <span>
+                  {selectedLang === 'kn'
+                    ? 'ಗೂಗಲ್ ಸರ್ಚ್ ಡೇಟಾ ಆಧಾರಿತ'
+                    : selectedLang === 'hi'
+                    ? 'गूगल सर्च डेटा से प्रमाणित'
+                    : 'Google Search Data Grounded'}
+                </span>
               </div>
             </div>
 
@@ -437,9 +540,21 @@ export const DossierModal: React.FC<DossierModalProps> = ({
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold text-[#444746] flex items-center gap-1">
                     <span className="material-symbols-outlined text-[14px] text-[#1a73e8]">search</span>
-                    Live Google Search Grounding Queries Executed
+                    <span>
+                      {selectedLang === 'kn'
+                        ? 'ಲೈವ್ ಗೂಗಲ್ ಸರ್ಚ್ ದೃಢೀಕರಣ ಪ್ರಶ್ನೆಗಳು'
+                        : selectedLang === 'hi'
+                        ? 'लाइव गूगल सर्च सत्यापन प्रश्न'
+                        : 'Live Google Search Grounding Queries Executed'}
+                    </span>
                   </span>
-                  <span className="text-[10px] text-[#74777f]">Click query to view live Google results</span>
+                  <span className="text-[10px] text-[#74777f]">
+                    {selectedLang === 'kn'
+                      ? 'ಲೈವ್ ಫಲಿತಾಂಶಗಳನ್ನು ವೀಕ್ಷಿಸಲು ಕ್ಲಿಕ್ ಮಾಡಿ'
+                      : selectedLang === 'hi'
+                      ? 'लाइव परिणाम देखने के लिए क्लिक करें'
+                      : 'Click query to view live Google results'}
+                  </span>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {dossier.groundingInfo.queries.map((q, idx) => (
@@ -460,57 +575,80 @@ export const DossierModal: React.FC<DossierModalProps> = ({
               </div>
             )}
 
-            {/* Evidence Sources List */}
-            <div className="space-y-2">
-              {dossier.sources.map((src, idx) => (
-                <div key={idx} className="bg-white p-3.5 rounded-xl border border-[#e5eeff] flex flex-col gap-1.5 shadow-2xs hover:border-[#8fa7fe] transition-colors">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-['Plus Jakarta Sans'] font-semibold text-sm text-[#0b1c30]">
-                      {src.name}
-                    </span>
-                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
-                      src.status === 'confirmed'
-                        ? 'bg-[#ecfdf5] text-[#059669]'
-                        : src.status === 'refuted'
-                        ? 'bg-[#fff1f2] text-[#e11d48]'
-                        : 'bg-[#f1f5f9] text-[#64748b]'
-                    }`}>
-                      {src.status === 'confirmed' ? 'Verified Record' : src.status === 'refuted' ? 'Official Clarification' : 'Registry Searched'}
-                    </span>
-                  </div>
-                  <span className="text-[11px] text-[#76777d]">{src.category}</span>
-                  <p className="text-xs text-[#45464d]">{src.details}</p>
+            {/* Evidence Sources List - RECORD CORROBORATION IN SELECTED LANGUAGE */}
+            <div className="space-y-2.5">
+              {dossier.sources.map((src, idx) => {
+                const srcName = getSourceName(src, selectedLang);
+                const srcCategory = getSourceCategory(src, selectedLang);
+                const srcStatusLabel = getSourceStatusLabel(src.status, selectedLang);
+                const srcDetails = getSourceDetails(src, selectedLang);
+                const actionLabel = getPrimarySourceActionLabel(Boolean(src.url), srcName, selectedLang);
 
-                  <div className="pt-1 flex items-center justify-between border-t border-[#f1f5f9] mt-1">
-                    {src.url ? (
-                      <a
-                        href={src.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-[11px] font-bold text-[#1a73e8] hover:text-[#0b57d0] transition-colors"
+                return (
+                  <div
+                    key={idx}
+                    className="bg-white p-3.5 rounded-xl border border-[#e5eeff] flex flex-col gap-2 shadow-2xs hover:border-[#8fa7fe] transition-colors"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-['Plus Jakarta Sans'] font-bold text-sm text-[#0b1c30]">
+                        {srcName}
+                      </span>
+                      <span
+                        className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                          src.status === 'confirmed' || src.status === 'corroborated'
+                            ? 'bg-[#ecfdf5] text-[#059669]'
+                            : src.status === 'refuted'
+                            ? 'bg-[#fff1f2] text-[#e11d48]'
+                            : 'bg-[#f1f5f9] text-[#64748b]'
+                        }`}
                       >
-                        <span className="material-symbols-outlined text-[14px]">link</span>
-                        <span>Open Primary Evidence Source</span>
-                        <span className="material-symbols-outlined text-[13px]">launch</span>
-                      </a>
-                    ) : (
-                      <a
-                        href={`https://www.google.com/search?q=${encodeURIComponent(dossier.originalClaim + ' ' + src.name)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-[11px] font-medium text-[#1a73e8] hover:underline"
-                      >
-                        <span className="material-symbols-outlined text-[14px]">search</span>
-                        <span>Search "{src.name}" on Google</span>
-                      </a>
-                    )}
+                        {srcStatusLabel}
+                      </span>
+                    </div>
+                    <span className="text-[11px] font-medium text-[#76777d]">{srcCategory}</span>
+                    <p
+                      className={`text-xs text-[#334155] leading-relaxed ${
+                        selectedLang === 'kn'
+                          ? "font-['Noto_Sans_Kannada'] font-medium"
+                          : selectedLang === 'hi'
+                          ? "font-['Noto_Sans_Devanagari'] font-medium"
+                          : ""
+                      }`}
+                    >
+                      {srcDetails}
+                    </p>
 
-                    {src.timestamp && (
-                      <span className="text-[10px] text-[#94a3b8] font-mono">{src.timestamp}</span>
-                    )}
+                    <div className="pt-1.5 flex items-center justify-between border-t border-[#f1f5f9] mt-0.5">
+                      {src.url ? (
+                        <a
+                          href={src.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-[11px] font-bold text-[#1a73e8] hover:text-[#0b57d0] transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-[14px]">link</span>
+                          <span>{actionLabel}</span>
+                          <span className="material-symbols-outlined text-[13px]">launch</span>
+                        </a>
+                      ) : (
+                        <a
+                          href={`https://www.google.com/search?q=${encodeURIComponent(dossier.originalClaim + ' ' + src.name)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-[11px] font-medium text-[#1a73e8] hover:underline"
+                        >
+                          <span className="material-symbols-outlined text-[14px]">search</span>
+                          <span>{actionLabel}</span>
+                        </a>
+                      )}
+
+                      {src.timestamp && (
+                        <span className="text-[10px] text-[#94a3b8] font-mono">{src.timestamp}</span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Quick Live Search Action Bar */}
@@ -527,7 +665,13 @@ export const DossierModal: React.FC<DossierModalProps> = ({
                   <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
                   <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
                 </svg>
-                <span>Cross-check full claim live on Google Search</span>
+                <span>
+                  {selectedLang === 'kn'
+                    ? 'ಗೂಗಲ್ ಸರ್ಚ್‌ನಲ್ಲಿ ಪೂರ್ಣ ಸುದ್ದಿಯನ್ನು ಲೈವ್ ಪರಿಶೀಲಿಸಿ'
+                    : selectedLang === 'hi'
+                    ? 'गूगल सर्च पर पूरे दावे की लाइव पड़ताल करें'
+                    : 'Cross-check full claim live on Google Search'}
+                </span>
                 <span className="material-symbols-outlined text-[14px]">open_in_new</span>
               </a>
             </div>

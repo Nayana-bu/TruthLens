@@ -14,6 +14,7 @@ interface VerifyTabProps {
   investigationStatusMessage?: string;
   latestDossier?: ClaimDossier | null;
   allDossiers?: ClaimDossier[];
+  onOpenAuthorities?: () => void;
 }
 
 export const VerifyTab: React.FC<VerifyTabProps> = ({
@@ -25,6 +26,7 @@ export const VerifyTab: React.FC<VerifyTabProps> = ({
   investigationStatusMessage,
   latestDossier,
   allDossiers,
+  onOpenAuthorities,
 }) => {
   const t = UI_TRANSLATIONS[currentLang];
   const dossiersList = allDossiers && allDossiers.length > 0 ? allDossiers : INITIAL_DOSSIERS;
@@ -425,14 +427,25 @@ export const VerifyTab: React.FC<VerifyTabProps> = ({
         </button>
 
         {/* Visual Context Enrichment: Forensic Source Radar */}
-        <div className="mt-1 bg-[#eff4ff] rounded-lg p-3 flex items-center justify-between border border-[#d3e4fe]">
+        <div 
+          onClick={onOpenAuthorities}
+          className={`mt-1 bg-[#eff4ff] rounded-lg p-3 flex items-center justify-between border border-[#d3e4fe] ${
+            onOpenAuthorities ? 'cursor-pointer hover:bg-[#e0ecff] hover:border-[#bfdbfe] transition-all' : ''
+          }`}
+          title="Click to view verified government authorities & portals"
+        >
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-full bg-[#dce9ff] flex items-center justify-center text-[#4059aa]">
               <span className="material-symbols-outlined text-[18px]">travel_explore</span>
             </div>
             <div className="flex flex-col">
-              <span className="font-['Inter'] text-xs font-bold text-[#0b1c30]">
-                {t.archiveSweepTitle}
+              <span className="font-['Inter'] text-xs font-bold text-[#0b1c30] flex items-center gap-1.5">
+                <span>{t.archiveSweepTitle}</span>
+                {onOpenAuthorities && (
+                  <span className="text-[10px] text-[#15803d] font-bold bg-[#dcfce7] px-1.5 py-0.2 rounded">
+                    View 48 Desks
+                  </span>
+                )}
               </span>
               <span className="font-['Inter'] text-[11px] text-[#45464d]">
                 {t.archiveSweepSub}
@@ -471,270 +484,108 @@ export const VerifyTab: React.FC<VerifyTabProps> = ({
         </div>
       )}
 
-      {/* LATEST VERIFIED CLAIM LIVE RESULT (CLEAR FAKE/REAL & VOICE IN KANNADA/HINDI) */}
-      {latestDossier && !isInvestigating && (
-        <div className="flex flex-col gap-3 p-4 bg-white rounded-2xl border-2 border-[#4059aa] shadow-lg animate-in fade-in slide-in-from-top-3">
-          <div className="flex items-center justify-between pb-2 border-b border-[#e5eeff]">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#10b981] animate-ping" />
-              <span className="text-xs font-black uppercase tracking-wider text-[#4059aa] flex items-center gap-1">
-                <span className="material-symbols-outlined text-[16px]">verified</span>
-                {currentLang === 'kn'
-                  ? 'ನಿಮ್ಮ ಸುದ್ದಿಯ ತನಿಖಾ ಫಲಿತಾಂಶ'
-                  : currentLang === 'hi'
-                  ? 'आपकी खबर की जांच का परिणाम'
-                  : 'Investigation Result For Your News'}
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => onInspectDossier(latestDossier)}
-              className="text-xs font-bold text-[#4059aa] hover:underline flex items-center gap-0.5"
-            >
-              <span>Full Dossier</span>
-              <span className="material-symbols-outlined text-[15px]">arrow_forward</span>
-            </button>
-          </div>
-
-          {/* User's Original Claim Callout */}
-          <div className="bg-[#eff4ff] p-3 rounded-xl border border-[#d3e4fe] flex items-start gap-2.5">
-            <span className="material-symbols-outlined text-[#4059aa] text-[20px] flex-shrink-0 mt-0.5">
-              chat_bubble
-            </span>
-            <div className="flex flex-col text-xs">
-              <span className="font-bold text-[#0b1c30] uppercase text-[10px] tracking-wider text-[#4059aa]">
-                {currentLang === 'kn' ? 'ನೀವು ಸಲ್ಲಿಸಿದ ಸುದ್ದಿ:' : currentLang === 'hi' ? 'आपका दर्ज किया गया समाचार:' : 'Your Submitted News:'}
-              </span>
-              <p className="text-sm font-semibold text-[#0b1c30] mt-0.5 leading-snug">
-                "{latestDossier.originalClaim}"
-              </p>
-            </div>
-          </div>
-
-          {/* Voice and Clear Verdict Player */}
-          <VoiceVerdictPlayer dossier={latestDossier} currentLang={currentLang} />
-        </div>
-      )}
-
-      {/* Disinformation Intelligence Stream: Trending / All Verifications */}
+      {/* 3-Step Verification Protocol Cards */}
       <div className="flex flex-col gap-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <span className="material-symbols-outlined text-[20px] text-[#4059aa]">
-              local_fire_department
+        <h3 className="font-['Plus Jakarta Sans'] font-bold text-sm text-[#0b1c30] flex items-center gap-1.5">
+          <span className="material-symbols-outlined text-[18px] text-[#4059aa]">verified_user</span>
+          <span>
+            {currentLang === 'kn'
+              ? 'ಸತ್ಯ ಪರಿಶೀಲನಾ ವಿಧಾನ (Verification Protocol)'
+              : currentLang === 'hi'
+              ? 'सत्यापन प्रक्रिया (Verification Protocol)'
+              : 'Autonomous Forensic Protocol'}
+          </span>
+        </h3>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          <div className="p-3 bg-white rounded-xl border border-[#e5eeff] shadow-2xs flex flex-col gap-1">
+            <span className="w-6 h-6 rounded-md bg-[#eff4ff] text-[#4059aa] font-bold text-xs flex items-center justify-center">
+              1
             </span>
-            <h2 className="font-['Plus Jakarta Sans'] text-base sm:text-lg font-bold text-[#0b1c30]">
-              {t.trendingTitle}
-            </h2>
+            <span className="font-['Plus Jakarta Sans'] font-bold text-xs text-[#0b1c30]">
+              {currentLang === 'kn' ? 'ಒಸಿಆರ್ ಮತ್ತು ಭಾಷಾ ವಿಶ್ಲೇಷಣೆ' : currentLang === 'hi' ? 'ओसीआर एवं भाषा विश्लेषण' : 'OCR & Multilingual Parser'}
+            </span>
+            <p className="text-[11px] text-[#76777d] leading-snug">
+              {currentLang === 'kn'
+                ? 'ಸ್ಕ್ರೀನ್‌ಶಾಟ್ ಅಥವಾ ವಾಟ್ಸಾಪ್ ಪಠ್ಯದಿಂದ ಮೂಲ ವಿಷಯವನ್ನು ಹೊರತೆಗೆಯಲಾಗುತ್ತದೆ.'
+                : currentLang === 'hi'
+                ? 'स्क्रीनशॉट या मैसेज से मुख्य टेक्स्ट व संदर्भ निकाला जाता है।'
+                : 'Extracts core assertions from screenshots, links, and messages.'}
+            </p>
           </div>
-          <button
-            type="button"
-            onClick={onViewAllTrending}
-            className="font-['Inter'] text-xs font-semibold text-[#4059aa] hover:text-[#1d3989] flex items-center gap-0.5"
-          >
-            <span>{t.viewAll}</span>
-            <span className="material-symbols-outlined text-[16px]">chevron_right</span>
-          </button>
-        </div>
 
-        {/* Cards Stack */}
-        <div className="flex flex-col gap-3">
-          {dossiersList.slice(0, 4).map((item) => {
-            const isFalse = item.verdict === 'false' || item.clearVerdictStatus === 'FAKE';
-            const isMisleading = item.verdict === 'misleading' || item.clearVerdictStatus === 'MISLEADING';
-            const isUserItem = item.id.startsWith('user-dossier');
+          <div className="p-3 bg-white rounded-xl border border-[#e5eeff] shadow-2xs flex flex-col gap-1">
+            <span className="w-6 h-6 rounded-md bg-[#eff4ff] text-[#4059aa] font-bold text-xs flex items-center justify-center">
+              2
+            </span>
+            <span className="font-['Plus Jakarta Sans'] font-bold text-xs text-[#0b1c30]">
+              {currentLang === 'kn' ? '48 ಗೆಜೆಟ್‌ಗಳ ಪರಿಶೀಲನೆ' : currentLang === 'hi' ? '48 राजपत्रों से मिलान' : '48 Gazette Sweep'}
+            </span>
+            <p className="text-[11px] text-[#76777d] leading-snug">
+              {currentLang === 'kn'
+                ? 'ಕರ್ನಾಟಕ ಗೆಜೆಟ್, ಪಿಐಬಿ, ಆರ್‌ಬಿಐ ಅಧಿಕೃತ ಆದೇಶಗಳೊಂದಿಗೆ ತಾಳೆ ನೋಡಲಾಗುತ್ತದೆ.'
+                : currentLang === 'hi'
+                ? 'कर्नाटक राजपत्र, पीआईबी व आरबीआई आदेशों से क्रॉस-चेक होता है।'
+                : 'Cross-checks with official state gazettes and government registries.'}
+            </p>
+          </div>
 
-            return (
-              <div
-                key={item.id}
-                onClick={() => onInspectDossier(item)}
-                className={`bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-all flex flex-col gap-2.5 relative overflow-hidden border cursor-pointer group active:scale-[0.99] ${
-                  isUserItem ? 'border-2 border-[#4059aa]/40 bg-[#f8faff]' : 'border-[#e5eeff]'
-                }`}
-              >
-                {/* Left accent strip */}
-                <div
-                  className={`absolute left-0 top-0 bottom-0 w-1.5 ${
-                    isFalse
-                      ? 'bg-[#ba1a1a]'
-                      : isMisleading
-                      ? 'bg-[#d97706]'
-                      : 'bg-[#059669]'
-                  }`}
-                />
-
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  {/* CLEAR VERDICT STAMP */}
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg font-['Plus Jakarta Sans'] text-xs font-extrabold uppercase shadow-xs ${
-                        isFalse
-                          ? 'bg-[#ba1a1a] text-white'
-                          : isMisleading
-                          ? 'bg-[#d97706] text-white'
-                          : 'bg-[#059669] text-white'
-                      }`}
-                    >
-                      <span className="material-symbols-outlined text-[14px]">
-                        {isFalse ? 'cancel' : isMisleading ? 'warning' : 'check_circle'}
-                      </span>
-                      {isFalse ? '❌ FAKE' : isMisleading ? '⚠️ MISLEADING' : '✅ REAL'}
-                    </span>
-
-                    {isUserItem && (
-                      <span className="text-[10px] font-extrabold bg-[#dce1ff] text-[#00164e] px-2 py-0.5 rounded-full flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[12px]">person</span>
-                        Your News
-                      </span>
-                    )}
-                  </div>
-
-                  <span className="font-['Inter'] text-[11px] text-[#76777d] flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[13px]">schedule</span>
-                    {item.timeAgo}
-                  </span>
-                </div>
-
-                <h3 className="font-['Plus Jakarta Sans'] text-base font-bold text-[#0b1c30] leading-snug group-hover:text-[#4059aa] transition-colors">
-                  {item.title}
-                </h3>
-
-                <p className="font-['Inter'] text-xs sm:text-sm text-[#45464d] line-clamp-2 leading-relaxed">
-                  {item.summary[currentLang] || item.summary.en}
-                </p>
-
-                {/* Direct One-Tap Voice Player in Kannada and Hindi */}
-                <div className="bg-[#eff4ff] p-2 rounded-lg border border-[#d3e4fe] flex items-center justify-between gap-2 mt-1">
-                  <span className="text-[10px] font-bold text-[#4059aa] uppercase tracking-wider flex items-center gap-1 flex-shrink-0">
-                    <span className="material-symbols-outlined text-[14px]">volume_up</span>
-                    ಧ್ವನಿ / आवाज:
-                  </span>
-
-                  <div className="flex items-center gap-1.5">
-                    {/* Kannada Speak Button */}
-                    <button
-                      type="button"
-                      onClick={(e) => handleQuickPlayAudio(e, item, 'kn')}
-                      className={`px-2.5 py-1 rounded-md text-[11px] font-bold flex items-center gap-1 transition-all ${
-                        playingAudio?.id === item.id && playingAudio.lang === 'kn'
-                          ? 'bg-[#ba1a1a] text-white ring-2 ring-red-300'
-                          : 'bg-white text-[#0b1c30] hover:bg-[#dce9ff] border border-[#d3e4fe]'
-                      }`}
-                    >
-                      <span className="material-symbols-outlined text-[14px]">
-                        {playingAudio?.id === item.id && playingAudio.lang === 'kn' ? 'stop' : 'volume_up'}
-                      </span>
-                      <span>ಕನ್ನಡ</span>
-                    </button>
-
-                    {/* Hindi Speak Button */}
-                    <button
-                      type="button"
-                      onClick={(e) => handleQuickPlayAudio(e, item, 'hi')}
-                      className={`px-2.5 py-1 rounded-md text-[11px] font-bold flex items-center gap-1 transition-all ${
-                        playingAudio?.id === item.id && playingAudio.lang === 'hi'
-                          ? 'bg-[#ba1a1a] text-white ring-2 ring-red-300'
-                          : 'bg-white text-[#0b1c30] hover:bg-[#dce9ff] border border-[#d3e4fe]'
-                      }`}
-                    >
-                      <span className="material-symbols-outlined text-[14px]">
-                        {playingAudio?.id === item.id && playingAudio.lang === 'hi' ? 'stop' : 'volume_up'}
-                      </span>
-                      <span>हिन्दी</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-2 border-t border-[#f1f5f9] text-[11px] text-[#76777d]">
-                  <span className="flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[14px] text-[#4059aa]">
-                      verified_user
-                    </span>
-                    {item.sourceEntity}
-                  </span>
-
-                  <span className="font-['Inter'] text-xs text-[#4059aa] font-semibold flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
-                    {t.inspectDossier}{' '}
-                    <span className="material-symbols-outlined text-[14px]">
-                      arrow_forward
-                    </span>
-                  </span>
-                </div>
-              </div>
-            );
-          })}
+          <div className="p-3 bg-white rounded-xl border border-[#eff4ff] shadow-2xs flex flex-col gap-1">
+            <span className="w-6 h-6 rounded-md bg-[#eff4ff] text-[#059669] font-bold text-xs flex items-center justify-center">
+              3
+            </span>
+            <span className="font-['Plus Jakarta Sans'] font-bold text-xs text-[#0b1c30]">
+              {currentLang === 'kn' ? 'ಕನ್ನಡ ಧ್ವನಿ ವಿವರಣೆ' : currentLang === 'hi' ? 'हिन्दी ध्वनि निर्णय' : 'Spoken Voice Verdict'}
+            </span>
+            <p className="text-[11px] text-[#76777d] leading-snug">
+              {currentLang === 'kn'
+                ? 'ಕನ್ನಡ, ಹಿಂದಿ ಮತ್ತು ಇಂಗ್ಲಿಷ್‌ನಲ್ಲಿ ತಕ್ಷಣವೇ ಧ್ವನಿ ಸಾರಾಂಶವನ್ನು ಕೇಳಬಹುದು.'
+                : currentLang === 'hi'
+                ? 'कन्नड़, हिन्दी एवं अंग्रेजी में तुरंत ध्वनि सारांश उपलब्ध होता है।'
+                : 'Instant spoken audio verdicts in Kannada, Hindi, and English.'}
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Community Audit Proof Counter */}
-      <div className="rounded-xl bg-[#e5eeff] p-4 flex items-center justify-between gap-3 shadow-xs border border-[#d3e4fe]">
+      {/* Recent Desk Checks & Direct Link to Full Archive */}
+      <div className="bg-[#eff4ff] p-4 rounded-2xl border border-[#d3e4fe] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[#0b1c30] shadow-sm flex-shrink-0">
-            <span className="material-symbols-outlined text-[20px]">policy</span>
+          <div className="w-10 h-10 rounded-xl bg-white text-[#4059aa] flex items-center justify-center shadow-xs flex-shrink-0">
+            <span className="material-symbols-outlined text-[22px]">newspaper</span>
           </div>
           <div className="flex flex-col">
-            <span className="font-['Plus Jakarta Sans'] font-extrabold text-base sm:text-lg text-[#0b1c30]">
-              {t.claimsRefutedCount}
+            <span className="font-['Plus Jakarta Sans'] font-bold text-sm text-[#0b1c30]">
+              {currentLang === 'kn'
+                ? 'ವೈರಲ್ ಸುದ್ದಿ ದಾಖಲೆಗಳ ಪಟ್ಟಿ (Viral Debunk Archive)'
+                : currentLang === 'hi'
+                ? 'वायरल फर्जी खबरों का संग्रह (Viral Debunk Archive)'
+                : 'Viral Rumors & Debunk Archive'}
             </span>
-            <span className="font-['Inter'] text-xs text-[#45464d]">
-              {t.claimsRefutedDesc}
-            </span>
-          </div>
-        </div>
-        <div className="flex items-center text-[#4059aa]">
-          <span className="material-symbols-outlined text-[22px]">analytics</span>
-        </div>
-      </div>
-
-      {/* Sticky Investigation Launch Footer Bar */}
-      <div className="sticky bottom-16 pb-2 pt-2 bg-gradient-to-t from-[#f8f9ff] via-[#f8f9ff] to-transparent z-30">
-        <div className="bg-white/95 backdrop-blur-md rounded-xl p-3 shadow-xl border border-[#d3e4fe] flex flex-col gap-2">
-          <button
-            type="button"
-            disabled={isInvestigating}
-            onClick={handleExecuteInvestigation}
-            className="w-full h-12 rounded-lg bg-[#000000] hover:bg-[#131b2e] text-white font-['Plus Jakarta Sans'] font-bold text-sm sm:text-base flex items-center justify-center gap-2 shadow-lg transition-all active:scale-[0.99] group disabled:opacity-80 cursor-pointer"
-          >
-            {isInvestigating ? (
-              <>
-                <span className="material-symbols-outlined text-[20px] animate-spin">
-                  sync
-                </span>
-                <span>
-                  {currentLang === 'kn'
-                    ? 'ದಾಖಲೆಗಳ ಪರಿಶೀಲನೆ ನಡೆಯುತ್ತಿದೆ...'
-                    : currentLang === 'hi'
-                    ? 'रिकॉर्ड की जांच हो रही है...'
-                    : 'Sweeping Official Repositories...'}
-                </span>
-              </>
-            ) : (
-              <>
-                <span>
-                  {claimText.trim()
-                    ? currentLang === 'kn'
-                      ? 'ಈ ಸುದ್ದಿಯನ್ನು ತನಿಖೆ ನಡೆಸಿ (Investigate)'
-                      : currentLang === 'hi'
-                      ? 'इस खबर की जांच करें (Investigate)'
-                      : 'Investigate This News'
-                    : t.ctaInvestigate}
-                </span>
-                <span className="material-symbols-outlined text-[20px] group-hover:translate-x-1 transition-transform">
-                  arrow_forward
-                </span>
-              </>
-            )}
-          </button>
-
-          <div className="flex items-center justify-center gap-1.5 text-[#45464d]">
-            <span className="material-symbols-outlined text-[15px] text-[#4059aa]">
-              gavel
-            </span>
-            <span className="font-['Inter'] text-[11px] font-medium text-center">
-              {t.ctaSubtext}
+            <span className="text-xs text-[#45464d]">
+              {currentLang === 'kn'
+                ? 'ವಾಟ್ಸಾಪ್ ಸಂದೇಶಗಳು, ಸುತ್ತೋಲೆಗಳು ಮತ್ತು ತನಿಖೆ ಮಾಡಲಾದ ಸುದ್ದಿಗಳನ್ನು ವೀಕ್ಷಿಸಿ.'
+                : currentLang === 'hi'
+                ? 'व्हाट्सएप पर वायरल हुए फर्जी दावों और खंडन संदेशों की पूरी सूची।'
+                : 'Explore all community fact-checks and WhatsApp counter-debunk notes.'}
             </span>
           </div>
         </div>
+
+        <button
+          type="button"
+          onClick={onViewAllTrending}
+          className="h-10 px-4 rounded-xl bg-[#000000] text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm hover:bg-[#131b2e] transition-all flex-shrink-0 cursor-pointer active:scale-95"
+        >
+          <span>
+            {currentLang === 'kn'
+              ? 'ದಾಖಲೆಗಳ ಪಟ್ಟಿ ನೋಡಿ'
+              : currentLang === 'hi'
+              ? 'आर्काइव देखें'
+              : 'Browse Archive'}
+          </span>
+          <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+        </button>
       </div>
 
       {/* Report Fake News Modal for card-level reporting */}

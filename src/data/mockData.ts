@@ -1,6 +1,87 @@
-import { ClaimDossier, CommunitySubmission, Language } from '../types';
+import { ClaimDossier, CommunitySubmission, Language, VerifiedAuthority } from '../types';
 
 export const INITIAL_DOSSIERS: ClaimDossier[] = [
+  {
+    id: 'dossier-narendra-modi-pm',
+    title: 'Narendra modi is not a prime minister of India',
+    originalClaim: 'Narendra modi is not a prime minister of India',
+    verdict: 'false',
+    verdictLabel: 'FAKE NEWS',
+    verdictSubtitle: 'Official cross-examination confirms this claim is entirely fabricated. No gazette record, press release, or ministry order exists to corroborate this viral message.',
+    confidenceScore: 99.8,
+    timeAgo: 'Verified 2 minutes ago',
+    category: 'governance',
+    sourceEntity: 'National Civic Verification Desk',
+    languages: ['en', 'kn', 'hi'],
+    summary: {
+      en: 'Multiple official sources confirm that Narendra Modi is the current Prime Minister of India. The claim circulated on social media is false and appears to be a fabricated political message. No credible evidence supports this claim.',
+      kn: 'ನರೇಂದ್ರ ಮೋದಿಯವರು ಭಾರತದ ಪ್ರಧಾನ ಮಂತ್ರಿ ಅಲ್ಲ ಎಂಬ ಸಾಮಾಜಿಕ ಜಾಲತಾಣದ ಸುದ್ದಿ ಸಂಪೂರ್ಣ ಸುಳ್ಳು. ಭಾರತದ ಅಧಿಕೃತ ಗೆಜೆಟ್ ದಾಖಲೆಗಳು ನರೇಂದ್ರ ಮೋದಿಯವರು ಭಾರತದ ಪ್ರಸ್ತುತ ಪ್ರಧಾನ ಮಂತ್ರಿಯಾಗಿದ್ದಾರೆ ಎಂಬುದನ್ನು ದೃಢಪಡಿಸುತ್ತವೆ.',
+      hi: 'सोशल मीडिया पर प्रसारित यह दावा कि नरेंद्र मोदी भारत के प्रधानमंत्री नहीं हैं, पूरी तरह फर्जी और भ्रामक है। भारत का राजपत्र पुष्टि करता है कि नरेंद्र मोदी वर्तमान प्रधानमंत्री हैं।'
+    },
+    debunkExplanation: {
+      en: 'Official cross-examination confirms this claim is entirely fabricated. No gazette record, press release, or ministry order exists to corroborate this viral message.',
+      kn: 'ಅಧಿಕೃತ ದಾಖಲೆಗಳ ಪರಿಶೀಲನೆಯಲ್ಲಿ ಈ ಹೇಳಿಕೆ ಸಂಪೂರ್ಣ ಕಾಲ್ಪನಿಕ ಮತ್ತು ಸುಳ್ಳು ಎಂದು ದೃಢಪಟ್ಟಿದೆ. ಯಾವುದೇ ಗೆಜೆಟ್ ದಾಖಲೆ ಅಥವಾ ಸಚಿವಾಲಯದ ಆದೇಶವು ಈ ವೈರಲ್ ಸಂದೇಶವನ್ನು ಬೆಂಬಲಿಸುವುದಿಲ್ಲ.',
+      hi: 'आधिकारिक जांच से पुष्टि होती है कि यह दावा पूरी तरह मनगढ़ंत है। कोई भी गजट रिकॉर्ड, प्रेस विज्ञप्ति या मंत्रालय का आदेश इस वायरल संदेश का समर्थन नहीं करता है।'
+    },
+    clearVerdictStatus: 'FAKE',
+    spokenAudioScript: {
+      en: 'Official cross-examination confirms this claim is entirely fabricated. Multiple official sources confirm that Narendra Modi is the current Prime Minister of India. No credible evidence supports this claim.',
+      kn: 'ಎಚ್ಚರಿಕೆ! ನರೇಂದ್ರ ಮೋದಿಯವರು ಭಾರತದ ಪ್ರಧಾನ ಮಂತ್ರಿ ಅಲ್ಲ ಎಂಬ ಸುದ್ದಿ ಸಂಪೂರ್ಣ ಸುಳ್ಳಾಗಿದೆ. ಅಧಿಕೃತ ಗೆಜೆಟ್ ದಾಖಲೆಗಳ ಪ್ರಕಾರ ನರೇಂದ್ರ ಮೋದಿಯವರು ಭಾರತದ ಪ್ರಸ್ತುತ ಪ್ರಧಾನಿಯಾಗಿದ್ದಾರೆ. ಈ ನಕಲಿ ಸಂದೇಶವನ್ನು ಯಾರೂ ಹಂಚಿಕೊಳ್ಳಬೇಡಿ.',
+      hi: 'सावधान! यह दावा कि नरेंद्र मोदी भारत के प्रधानमंत्री नहीं हैं, पूरी तरह फर्जी है। आधिकारिक सरकारी रिकॉर्ड के अनुसार नरेंद्र मोदी ही भारत के वर्तमान प्रधानमंत्री हैं। इस झूठे संदेश पर विश्वास न करें।'
+    },
+    whatsappDebunkNote: {
+      en: '🚨 *TRUTHLENS FACT CHECK ALERT* 🚨\n\n❌ *VERDICT: FAKE NEWS / ಸುಳ್ಳು ಸುದ್ದಿ*\n\n*Claim:* "Narendra modi is not a prime minister of India"\n*Fact:* Official government records confirm Narendra Modi is the incumbent Prime Minister of India. This circulating forward is fabricated.\n\n_Ref: TruthLens Civic Verification Unit_',
+      kn: '🚨 *ಟ್ರೂತ್‌ಲೆನ್ಸ್ ಫ್ಯಾಕ್ಟ್ ಚೆಕ್ ಎಚ್ಚರಿಕೆ* 🚨\n\n❌ *ತೀರ್ಪು: ಸಂಪೂರ್ಣ ಸುಳ್ಳು ಸುದ್ದಿ*\n\n*ವೈರಲ್ ಸುದ್ದಿ:* "ನರೇಂದ್ರ ಮೋದಿ ಭಾರತದ ಪ್ರಧಾನಿ ಅಲ್ಲ"\n*ಸತ್ಯ:* ನರೇಂದ್ರ ಮೋದಿಯವರು ಭಾರತದ ಪ್ರಸ್ತುತ ಅಧಿಕೃತ ಪ್ರಧಾನ ಮಂತ್ರಿ. ಸುಳ್ಳು ವದಂತಿಗಳನ್ನು ಹಂಚಿಕೊಳ್ಳಬೇಡಿ.',
+      hi: '🚨 *ट्रूथलेन्स फैक्ट चेक चेतावनी* 🚨\n\n❌ *निष्कर्ष: पूरी तरह फर्जी*\n\n*दावा:* नरेंद्र मोदी भारत के प्रधानमंत्री नहीं हैं\n*सच्चाई:* सरकारी रिकॉर्ड पुष्टि करते हैं कि नरेंद्र मोदी भारत के मौजूदा प्रधानमंत्री हैं।'
+    },
+    sources: [
+      {
+        name: 'National Civic Verification Desk',
+        category: 'Government Clarification',
+        status: 'refuted',
+        details: 'Primary official desk. No matching notifications found in central registry.',
+        url: 'https://factcheck.pib.gov.in/',
+        timestamp: 'Verified 2 minutes ago'
+      },
+      {
+        name: 'PIB Fact Check & Civic Archive',
+        category: 'Government Clarification',
+        status: 'refuted',
+        details: 'Flagged as unverified viral forward circulating across community channels.',
+        url: 'https://factcheck.pib.gov.in/',
+        timestamp: 'Verified today'
+      },
+      {
+        name: 'Google Search Fact-Check Index',
+        category: 'Searched Registry',
+        status: 'confirmed',
+        details: 'Live web search queries show this claim is false across trusted sources.',
+        url: 'https://www.google.com/search?q=Narendra+modi+is+not+a+prime+minister+of+India+fact+check',
+        timestamp: 'Real-time'
+      }
+    ],
+    redFlags: [
+      'No official gazette notification supports this claim',
+      'No press release or ministry order found',
+      'Inconsistent font and missing government format',
+      'Viral image appears to be edited'
+    ],
+    timeline: [
+      { time: '10:00 AM', event: 'First detected spreading across social media handles', source: 'Crowd Sensor' },
+      { time: '10:45 AM', event: 'Official portals cross-referenced against Cabinet registry', source: 'Central Registry' },
+      { time: '11:15 AM', event: 'TruthLens publishes verified debunk dossier', source: 'TruthLens Engine' }
+    ],
+    originVector: 'Social Media Viral Posts & Edited Screenshots',
+    officialRefId: 'TL-GOV-PM-2024-001',
+    groundingInfo: {
+      isGrounded: true,
+      queries: ['Narendra Modi prime minister of India official status', 'PM India PIB Fact Check'],
+      sources: [
+        { title: 'PIB Fact Check Desk', uri: 'https://factcheck.pib.gov.in' },
+        { title: 'Official Portal of Prime Minister of India', uri: 'https://www.pmindia.gov.in' }
+      ]
+    }
+  },
   {
     id: 'dossier-500gb-free-data',
     title: 'Viral 500GB Free Data Scheme Link',
@@ -20,8 +101,8 @@ export const INITIAL_DOSSIERS: ClaimDossier[] = [
     },
     debunkExplanation: {
       en: 'The Ministry of Communications and PIB Fact Check have clarified that the Government of India is running no such free 5G data scheme. The domain "pmyojana-free-5g.xyz" is an unverified phishing site hosted on offshore servers designed to steal Aadhaar OTPs and banking credentials.',
-      kn: 'ಸಂವಹನ ಸಚಿವಾಲಯ ಮತ್ತು ಪಿಐಬಿ ಫ್ಯಾಕ್ಟ್ ಚೆಕ್ ಸ್ಪಷ್ಟಪಡಿಸಿದ್ದು, ಭಾರತ ಸರ್ಕಾರವು ಯಾವುದೇ ಉಚಿತ 5G ಡೇಟಾ ಯೋಜನೆಯನ್ನು ಘೋಷಿಸಿಲ್ಲ. ಈ ಲಿಂಕ್ ವಂಚನೆಯಾಗಿದೆ.',
-      hi: 'संचार मंत्रालय और पीआईबी फैक्ट चेक ने पुष्टि की है कि भारत सरकार ऐसी कोई मुफ्त 5G डेटा योजना नहीं चला रही है। यह लिंक फर्जी है।'
+      kn: 'ಸಂವಹನ ಸಚಿವಾಲಯ (DoT) ಮತ್ತು ಪಿಐಬಿ (PIB) ಫ್ಯಾಕ್ಟ್ ಚೆಕ್ ಸ್ಪಷ್ಟಪಡಿಸಿದ್ದು, ಭಾರತ ಸರ್ಕಾರವು ಯಾವುದೇ ಉಚಿತ 500GB 5G ಡೇಟಾ ಯೋಜನೆಯನ್ನು ಘೋಷಿಸಿಲ್ಲ. "pmyojana-free-5g.xyz" ಎಂಬ ಡೊಮೇನ್ ವಿದೇಶಿ ಸರ್ವರ್‌ಗಳಲ್ಲಿ ನೋಂದಾಯಿಸಲ್ಪಟ್ಟ ನಕಲಿ ಫಿಶಿಂಗ್ ಸೈಟ್ ಆಗಿದ್ದು, ಇದು ನಾಗರಿಕರ ಆಧಾರ್ ಒಟಿಪಿ ಮತ್ತು ಬ್ಯಾಂಕಿಂಗ್ ರಹಸ್ಯಗಳನ್ನು ಕದಿಯಲು ಹರಡಲಾದ ಸೈಬರ್ ವಂಚನೆಯಾಗಿದೆ ಎಂದು ಸಾಕ್ಷ್ಯಾಧಾರಗಳ ಸಮೇತ ದೃಢಪಟ್ಟಿದೆ.',
+      hi: 'संचार मंत्रालय (DoT) और पीआईबी (PIB) फैक्ट चेक ने आधिकारिक रूप से स्पष्ट किया है कि भारत सरकार द्वारा कोई भी मुफ्त 500GB 5G डेटा योजना नहीं चलाई जा रही है। "pmyojana-free-5g.xyz" डोमेन एक अनधिकृत फ़िशिंग वेबसाइट है जिसे नागरिकों के आधार ओटीपी और बैंकिंग क्रेडेंशियल चुराने के लिए बनाया गया है।'
     },
     clearVerdictStatus: 'FAKE',
     spokenAudioScript: {
@@ -110,8 +191,8 @@ export const INITIAL_DOSSIERS: ClaimDossier[] = [
     },
     debunkExplanation: {
       en: 'The circular being circulated on WhatsApp is an altered image of an official order issued by the Dakshina Kannada Deputy Commissioner back on 23rd July 2023. The Karnataka Department of School Education and Literacy has confirmed that schools are operating on regular schedule.',
-      kn: 'ವಾಟ್ಸಾಪ್‌ನಲ್ಲಿ ಹರಿದಾಡುತ್ತಿರುವ ಆದೇಶ ಪತ್ರವು ಜುಲೈ 2023 ರ ದಕ್ಷಿಣ ಕನ್ನಡ ಜಿಲ್ಲೆಯ ಹಳೆಯ ಆದೇಶವಾಗಿದೆ. ಪ್ರಸ್ತುತ ರಾಜ್ಯಾದ್ಯಂತ ಯಾವುದೇ ರಜೆ ಘೋಷಿಸಿಲ್ಲ ಎಂದು ಶಿಕ್ಷಣ ಇಲಾಖೆ ಸ್ಪಷ್ಟಪಡಿಸಿದೆ.',
-      hi: 'व्हाट्सएप पर फैलाया जा रहा सर्कुलर जुलाई 2023 का पुराना आदेश है। कर्नाटक शिक्षा विभाग ने पुष्टि की है कि सभी स्कूल सामान्य रूप से खुले हैं।'
+      kn: 'ವಾಟ್ಸಾಪ್‌ನಲ್ಲಿ ಹರಿದಾಡುತ್ತಿರುವ ಸುತ್ತೋಲೆಯು ಜುಲೈ 2023 ರ ದಕ್ಷಿಣ ಕನ್ನಡ ಜಿಲ್ಲಾಧಿಕಾರಿಗಳ ಹಳೆಯ ಆದೇಶದ ತಿದ್ದಿದ ಚಿತ್ರವಾಗಿದೆ. ಕರ್ನಾಟಕ ಶಾಲಾ ಶಿಕ್ಷಣ ಮತ್ತು ಸಾಕ್ಷರತಾ ಇಲಾಖೆಯು ರಾಜ್ಯಾದ್ಯಂತ ಎಲ್ಲಾ ಶಾಲೆಗಳು ಎಂದಿನಂತೆ ಕಾರ್ಯನಿರ್ವಹಿಸುತ್ತಿವೆ ಮತ್ತು ಯಾವುದೇ ತುರ್ತು ರಜೆ ಘೋಷಿಸಿಲ್ಲ ಎಂದು ಅಧಿಕೃತವಾಗಿ ಸ್ಪಷ್ಟಪಡಿಸಿದೆ.',
+      hi: 'व्हाट्सएप पर प्रसारित हो रहा परिपत्र जुलाई 2023 का दक्षिण कन्नड़ जिला उपायुक्त का एक पुराना आदेश है, जिसमें छेड़छाड़ की गई है। कर्नाटक स्कूल शिक्षा एवं साक्षरता विभाग ने आधिकारिक पुष्टि की है कि सभी स्कूल नियमित समय सारिणी पर चल रहे हैं और कोई राज्यव्यापी अवकाश घोषित नहीं किया गया है।'
     },
     clearVerdictStatus: 'MISLEADING',
     spokenAudioScript: {
@@ -191,9 +272,9 @@ export const INITIAL_DOSSIERS: ClaimDossier[] = [
       hi: 'इसरो टेलीमेट्री रिलीज ने पुष्टि की है कि योजनाबद्ध कक्षीय प्रविष्टि सफल रही है।'
     },
     debunkExplanation: {
-      en: 'Official telemetry released by the Indian Space Research Organisation (ISRO) telemetry tracking and command network (ISTRAC) in Bengaluru confirms that the spacecraft entered the designated halo orbit around the Sun-Earth Lagrange point L1 on schedule.',
-      kn: 'ಭಾರತೀಯ ಬಾಹ್ಯಾಕಾಶ ಸಂಶೋಧನಾ ಸಂಸ್ಥೆ (ಇಸ್ರೋ) ಬಿಡುಗಡೆ ಮಾಡಿದ ಅಧಿಕೃತ ಮಾಹಿತಿಯ ಪ್ರಕಾರ, ಆದಿತ್ಯ-ಎಲ್1 ನೌಕೆಯು ನಿಗದಿತ ಕಕ್ಷೆಯನ್ನು ಯಶಸ್ವಿಯಾಗಿ ತಲುಪಿದೆ.',
-      hi: 'भारतीय अंतरिक्ष अनुसंधान संगठन (इसरो) ने आधिकारिक रूप से पुष्टि की है कि आदित्य-एल1 अंतरिक्ष यान सफलतापूर्वक अपनी लक्षित कक्षा में स्थापित हो गया है।'
+      en: 'Official telemetry released by the Indian Space Research Organisation (ISRO) telemetry tracking and command network (ISTRAC) in Bengaluru confirms that the spacecraft entered the designated halo orbit around the Sun-Earth Lagrange point L1 on schedule with zero telemetry drift.',
+      kn: 'ಬೆಂಗಳೂರಿನ ಇಸ್ರೋ ಟೆಲಿಮೆಟ್ರಿ ಟ್ರ್ಯಾಕಿಂಗ್ ಮತ್ತು ಕಮಾಂಡ್ ನೆಟ್‌ವರ್ಕ್ (ISTRAC) ಬಿಡುಗಡೆ ಮಾಡಿದ ಅಧಿಕೃತ ಟೆಲಿಮೆಟ್ರಿ ದಾಖಲೆಗಳು ಆದಿತ್ಯ-ಎಲ್1 ಬಾಹ್ಯಾಕಾಶ ನೌಕೆಯು ಸೂರ್ಯ-ಭೂಮಿ ಲಗ್ರಾಂಜ್ ಪಾಯಿಂಟ್ L1 ಸುತ್ತಲಿನ ನಿಗದಿತ ಹಾಲೋ ಕಕ್ಷೆಯನ್ನು ನಿಗದಿತ ಸಮಯಕ್ಕೆ ಯಶಸ್ವಿಯಾಗಿ ಪ್ರವೇಶಿಸಿದೆ ಎಂಬುದನ್ನು ಸಂಪೂರ್ಣವಾಗಿ ದೃಢಪಡಿಸಿವೆ.',
+      hi: 'बेंगलुरु स्थित भारतीय अंतरिक्ष अनुसंधान संगठन (इसरो) के टेलीमेट्री ट्रैकिंग एंड कमांड नेटवर्क (ISTRAC) द्वारा जारी आधिकारिक टेलीमेट्री आंकड़ों ने पुष्टि की है कि आदित्य-एल1 अंतरिक्ष यान तय समय पर सूर्य-पृथ्वी लैग्रेंज बिंदु L1 के चारों ओर निर्धारित हेलो कक्षा में सफलतापूर्वक स्थापित हो गया है।'
     },
     clearVerdictStatus: 'REAL',
     spokenAudioScript: {
@@ -268,8 +349,8 @@ export const INITIAL_DOSSIERS: ClaimDossier[] = [
     },
     debunkExplanation: {
       en: 'The Reserve Bank of India clarified through an official notification that banknotes with a star symbol in the number panel are fully legal tender. The star signifies a replacement note in a serialized packet where a defective note was extracted during high-speed printing.',
-      kn: 'ಆರ್‌ಬಿಐ ಅಧಿಕೃತವಾಗಿ ತಿಳಿಸಿರುವಂತೆ, ನಕ್ಷತ್ರ ಚಿಹ್ನೆಯಿರುವ ನೋಟುಗಳು ಚಲಾವಣೆಯಲ್ಲಿವೆ ಮತ್ತು ಕಾನೂನುಬದ್ಧವಾಗಿವೆ.',
-      hi: 'भारतीय रिजर्व बैंक ने स्पष्ट किया है कि स्टार (*) निशान वाले बैंक नोट पूरी तरह असली और वैध हैं।'
+      kn: 'ಭಾರತೀಯ ರಿಸರ್ವ್ ಬ್ಯಾಂಕ್ (ಆರ್‌ಬಿಐ) ಅಧಿಕೃತ ಅಧಿಸೂಚನೆಯ ಮೂಲಕ ಸಂಖ್ಯೆ ಫಲಕದಲ್ಲಿ ನಕ್ಷತ್ರ (*) ಚಿಹ್ನೆಯಿರುವ ನೋಟುಗಳು ನೂರಕ್ಕೆ ನೂರು ಮಾನ್ಯವಾದ ಮತ್ತು ಕಾನೂನುಬದ್ಧ ಕರೆನ್ಸಿ ನೋಟುಗಳಾಗಿವೆ ಎಂದು ಸ್ಪಷ್ಟಪಡಿಸಿದೆ. ಈ ನಕ್ಷತ್ರ ಚಿಹ್ನೆಯು ಮುದ್ರಣದ ಸಮಯದಲ್ಲಿ ದೋಷಪೂರಿತ ನೋಟಿನ ಬದಲಿಗೆ ಬಳಸಲಾದ ಸರಣಿ ಬದಲಿ ನೋಟನ್ನು ಸೂಚಿಸುತ್ತದೆ.',
+      hi: 'भारतीय रिजर्व बैंक (आरबीआई) ने आधिकारिक अधिसूचना द्वारा स्पष्ट किया है कि नंबर पैनल में स्टार (*) चिह्न वाले बैंक नोट पूरी तरह से वैध और कानूनी मुद्रा हैं। स्टार चिह्न केवल मुद्रण के दौरान खराब हुए नोटों के स्थान पर प्रतिस्थापन (रिप्लेसमेंट) नोट के रूप में उपयोग किया जाता है।'
     },
     clearVerdictStatus: 'FAKE',
     spokenAudioScript: {
@@ -488,3 +569,93 @@ export const UI_TRANSLATIONS: Record<Language, Record<string, string>> = {
     originVector: 'प्रसार का माध्यम'
   }
 };
+
+export const VERIFIED_AUTHORITIES: VerifiedAuthority[] = [
+  {
+    id: 'cybercrime',
+    name: 'National Cyber Crime Reporting Portal',
+    agencyName: 'Ministry of Home Affairs (I4C)',
+    category: 'cyber_security',
+    officialUrl: 'https://cybercrime.gov.in',
+    helpline: '1930 (Toll-Free 24x7)',
+    description: 'Nodal national authority for reporting cyber fraud, phishing, Aadhaar OTP theft, and online impersonation.',
+    verifiedBadge: 'Govt of India (.gov.in)',
+    jurisdiction: 'Pan-India',
+  },
+  {
+    id: 'pib',
+    name: 'PIB Fact Check Unit',
+    agencyName: 'Press Information Bureau, Ministry of I&B',
+    category: 'government',
+    officialUrl: 'https://factcheck.pib.gov.in',
+    whatsappHelpline: '+91 87997 11259',
+    emailContact: 'pibfactcheck@gmail.com',
+    description: 'Statutory verification bureau for countering viral disinformation regarding Central Government ministries, policies, and welfare schemes.',
+    verifiedBadge: 'Official PIB (.gov.in)',
+    jurisdiction: 'Central Ministries & National Schemes',
+  },
+  {
+    id: 'karnataka_factcheck',
+    name: 'Karnataka State Fact Check Unit',
+    agencyName: 'Dept of Information & Public Relations (DIPR), Govt of Karnataka',
+    category: 'state',
+    officialUrl: 'https://factcheck.karnataka.gov.in',
+    helpline: '112 / 1905',
+    description: 'Official Karnataka state authority validating state government orders, educational circulars, guarantee schemes, and localized viral claims.',
+    verifiedBadge: 'Govt of Karnataka (.gov.in)',
+    jurisdiction: 'Karnataka State',
+  },
+  {
+    id: 'cert_in',
+    name: 'CERT-In Incident Response Desk',
+    agencyName: 'Indian Computer Emergency Response Team, MeitY',
+    category: 'cyber_security',
+    officialUrl: 'https://www.cert-in.org.in',
+    emailContact: 'incident@cert-in.org.in',
+    description: 'National nodal agency for responding to computer security incidents, fraudulent websites, malware, and rogue APK campaigns.',
+    verifiedBadge: 'MeitY Statutory (.org.in)',
+    jurisdiction: 'National Critical Cyber Infrastructure',
+  },
+  {
+    id: 'rbi_sachet',
+    name: 'RBI Sachet & Financial Fraud Cell',
+    agencyName: 'Reserve Bank of India',
+    category: 'financial',
+    officialUrl: 'https://sachet.rbi.org.in',
+    helpline: '14440 (Toll-Free Financial Fraud Assistance)',
+    description: 'Apex banking regulatory portal for verifying financial notices, currency demonetization rumors, unauthorized loan apps, and fraudulent deposit schemes.',
+    verifiedBadge: 'Reserve Bank of India (.org.in)',
+    jurisdiction: 'Banking & Financial System',
+  },
+  {
+    id: 'chakshu',
+    name: 'DoT Sanchar Saathi & Chakshu Facility',
+    agencyName: 'Department of Telecommunications, Ministry of Communications',
+    category: 'government',
+    officialUrl: 'https://sancharsaathi.gov.in/sfc/',
+    description: 'Citizen safety initiative to report suspected fraud communications via SMS, calls, or WhatsApp purporting to offer free recharges or SIM deactivations.',
+    verifiedBadge: 'Dept of Telecom (.gov.in)',
+    jurisdiction: 'Telecom & SMS Networks',
+  },
+  {
+    id: 'boomlive',
+    name: 'BOOM Live Fact Check',
+    agencyName: 'BOOM Independent Newsroom',
+    category: 'independent_ifcn',
+    officialUrl: 'https://www.boomlive.in',
+    whatsappHelpline: '+91 77009 06588',
+    description: 'Independent fact-checking newsroom certified by the International Fact-Checking Network (IFCN) operating across English, Hindi, and regional languages.',
+    verifiedBadge: 'IFCN Signatory Certified',
+    jurisdiction: 'Independent Civic Verification',
+  },
+  {
+    id: 'altnews',
+    name: 'Alt News India',
+    agencyName: 'Pravda Media Foundation',
+    category: 'independent_ifcn',
+    officialUrl: 'https://www.altnews.in',
+    description: 'Non-profit fact-checking portal certified by the International Fact-Checking Network (IFCN) tracking communal, political, and medical misinformation.',
+    verifiedBadge: 'IFCN Signatory Certified',
+    jurisdiction: 'Independent Civic Verification',
+  },
+];

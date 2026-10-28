@@ -23,8 +23,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   ];
 
   return (
-    <nav className="fixed bottom-0 w-full z-40 pb-safe bg-[#f8f9ff]/90 backdrop-blur-xl border-t border-[#e5eeff] shadow-[0_-2px_12px_rgba(0,0,0,0.05)]">
-      <div className="flex justify-around items-center h-16 max-w-2xl mx-auto px-2">
+    <nav className="fixed bottom-0 w-full z-40 pb-safe bg-[#f8f9ff]/95 backdrop-blur-xl border-t border-[#d3e4fe] shadow-[0_-4px_16px_rgba(0,0,0,0.06)]">
+      <div className="flex justify-around items-center h-16 max-w-2xl mx-auto px-3">
         {items.map((item) => {
           const isActive = activeTab === item.id;
           return (
@@ -32,15 +32,15 @@ export const BottomNav: React.FC<BottomNavProps> = ({
               key={item.id}
               type="button"
               onClick={() => onChangeTab(item.id)}
-              className={`flex flex-col items-center justify-center min-w-[64px] h-12 py-1 transition-all ${
+              className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all cursor-pointer ${
                 isActive
-                  ? 'text-[#000000] font-bold scale-105'
-                  : 'text-[#45464d] hover:text-[#0b1c30]'
+                  ? 'bg-[#000000] text-white shadow-sm font-bold scale-[1.02]'
+                  : 'text-[#45464d] hover:text-[#0b1c30] hover:bg-[#eff4ff]'
               }`}
             >
               <span
-                className={`material-symbols-outlined text-[22px] transition-transform ${
-                  isActive ? 'text-[#000000]' : 'text-[#45464d]'
+                className={`material-symbols-outlined text-[20px] transition-transform ${
+                  isActive ? 'text-[#8fa7fe]' : 'text-[#45464d]'
                 }`}
               >
                 {item.icon}

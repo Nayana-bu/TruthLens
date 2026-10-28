@@ -29,9 +29,12 @@ export const ExploreFeedTab: React.FC<ExploreFeedTabProps> = ({
 
   const verdicts = [
     { id: 'all', label: 'All Verdicts' },
+    { id: 'verified_true', label: 'Verified True' },
     { id: 'false', label: 'False Claims' },
     { id: 'misleading', label: 'Misleading' },
-    { id: 'verified_true', label: 'Verified True' },
+    { id: 'partly_true', label: 'Partly True' },
+    { id: 'unverified', label: 'Unverified' },
+    { id: 'context_missing', label: 'Context Missing' },
   ];
 
   const filtered = dossiersList.filter((item) => {
@@ -133,8 +136,47 @@ export const ExploreFeedTab: React.FC<ExploreFeedTabProps> = ({
           </div>
         ) : (
           filtered.map((item) => {
-            const isFalse = item.verdict === 'false';
-            const isMisleading = item.verdict === 'misleading';
+            const isFalse = item.clearVerdictStatus === 'FAKE' || item.verdict === 'false';
+            const isMisleading = item.clearVerdictStatus === 'MISLEADING' || item.verdict === 'misleading';
+            const isPartly = item.clearVerdictStatus === 'PARTLY_TRUE' || item.verdict === 'partly_true';
+            const isContext = item.clearVerdictStatus === 'CONTEXT_MISSING' || item.verdict === 'context_missing';
+            const isTrue = item.clearVerdictStatus === 'REAL' || item.verdict === 'verified_true';
+
+            const barColor = isFalse
+              ? 'bg-[#ba1a1a]'
+              : isMisleading
+              ? 'bg-[#d97706]'
+              : isPartly
+              ? 'bg-[#ea580c]'
+              : isContext
+              ? 'bg-[#7c3aed]'
+              : isTrue
+              ? 'bg-[#16a34a]'
+              : 'bg-[#64748b]';
+
+            const badgeBg = isFalse
+              ? 'bg-[#fee2e2] text-[#93000a]'
+              : isMisleading
+              ? 'bg-[#fef3c7] text-[#92400e]'
+              : isPartly
+              ? 'bg-[#ffedd5] text-[#c2410c]'
+              : isContext
+              ? 'bg-[#ede9fe] text-[#6d28d9]'
+              : isTrue
+              ? 'bg-[#dcfce7] text-[#15803d]'
+              : 'bg-[#f1f5f9] text-[#334155]';
+
+            const badgeIcon = isFalse
+              ? 'cancel'
+              : isMisleading
+              ? 'warning'
+              : isPartly
+              ? 'published_with_changes'
+              : isContext
+              ? 'info'
+              : isTrue
+              ? 'check_circle'
+              : 'help';
 
             return (
               <div
@@ -142,28 +184,14 @@ export const ExploreFeedTab: React.FC<ExploreFeedTabProps> = ({
                 onClick={() => onInspectDossier(item)}
                 className="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-all flex flex-col gap-2 relative overflow-hidden border border-[#e5eeff] cursor-pointer group"
               >
-                <div
-                  className={`absolute left-0 top-0 bottom-0 w-1 ${
-                    isFalse
-                      ? 'bg-[#ba1a1a]'
-                      : isMisleading
-                      ? 'bg-[#4059aa]'
-                      : 'bg-[#131b2e]'
-                  }`}
-                />
+                <div className={`absolute left-0 top-0 bottom-0 w-1 ${barColor}`} />
 
                 <div className="flex items-center justify-between gap-2">
                   <span
-                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-['Inter'] text-[11px] font-bold ${
-                      isFalse
-                        ? 'bg-[#ffdad6] text-[#93000a]'
-                        : isMisleading
-                        ? 'bg-[#dce9ff] text-[#0b1c30]'
-                        : 'bg-[#dae2fd] text-[#131b2e]'
-                    }`}
+                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-['Inter'] text-[11px] font-bold ${badgeBg}`}
                   >
                     <span className="material-symbols-outlined text-[13px]">
-                      {isFalse ? 'cancel' : isMisleading ? 'warning' : 'check_circle'}
+                      {badgeIcon}
                     </span>
                     {item.verdictLabel}
                   </span>
