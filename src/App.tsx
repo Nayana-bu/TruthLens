@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TabType, Language, ClaimDossier, SubmissionMode, UserSession } from './types';
-import { INITIAL_DOSSIERS } from './data/mockData';
+import type { TabType, Language, ClaimDossier, SubmissionMode, UserSession, InvestigationStatistics } from './types';
 import { Sidebar } from './components/Sidebar';
 import { TopHeader } from './components/TopHeader';
 import { DashboardView } from './components/DashboardView';
@@ -19,32 +18,26 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<TabType>('verify');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
-  const [allDossiers, setAllDossiers] = useState<ClaimDossier[]>(() => {
-    try {
-      const saved = localStorage.getItem('truthlens_dossiers');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch {
-      // Ignore parse error
-    }
-    return INITIAL_DOSSIERS;
-  });
-
+  // Real database-backed investigations
+  const [allDossiers, setAllDossiers] = useState<ClaimDossier[]>([]);
   const [selectedDossier, setSelectedDossier] = useState<ClaimDossier | null>(null);
+  const [activeInvestigationDossier, setActiveInvestigationDossier] = useState<ClaimDossier | null>(null);
 
-  // Active investigation dossier defaults to the first dossier (matching the uploaded image)
-  const [activeInvestigationDossier, setActiveInvestigationDossier] = useState<ClaimDossier>(() => {
-    try {
-      const saved = sessionStorage.getItem('truthlens_active_investigation');
-      if (saved) {
-        return JSON.parse(saved);
-      }
-    } catch {
-      // Ignore parse error
-    }
-    return INITIAL_DOSSIERS[0];
+  // Genuine computed statistics
+  const [statistics, setStatistics] = useState<InvestigationStatistics>({
+    total: 0,
+    trueCount: 0,
+    truePercent: 0,
+    fakeCount: 0,
+    fakePercent: 0,
+    misleadingCount: 0,
+    misleadingPercent: 0,
+    partlyTrueCount: 0,
+    partlyTruePercent: 0,
+    unverifiedCount: 0,
+    unverifiedPercent: 0,
+    contextMissingCount: 0,
+    contextMissingPercent: 0,
   });
 
   const [isInvestigating, setIsInvestigating] = useState(false);
@@ -79,24 +72,126 @@ export default function App() {
     setCurrentUser(null);
   };
 
-  // Sync active dossier to sessionStorage
-  useEffect(() => {
-    if (activeInvestigationDossier) {
-      sessionStorage.setItem(
-        'truthlens_active_investigation',
-        JSON.stringify(activeInvestigationDossier)
-      );
-    }
-  }, [activeInvestigationDossier]);
-
-  // Persist dossiers list in localStorage
-  useEffect(() => {
+  // Fetch real persistent investigations & statistics on load
+  const refreshInvestigationsAndStats = async () => {
     try {
-      localStorage.setItem('truthlens_dossiers', JSON.stringify(allDossiers));
-    } catch {
-      // Ignore quota error
+      const [invRes, statsRes] = await Promise.all([
+        fetch('/api/investigations'),
+        fetch('/api/statistics'),
+      ]);
+
+      if (invRes.ok) {
+        const invData = await invRes.json();
+        if (invData.success && Array.isArray(invData.investigations)) {
+          const dossiers: ClaimDossier[] = invData.investigations.map((r: any) => r.dossier);
+          setAllDossiers(dossiers);
+          setActiveInvestigationDossier((prev) => {
+            if (prev) {
+              const matched = dossiers.find((d) => d.id === prev.id);
+              if (matched) return matched;
+            }
+            return dossiers.length > 0 ? dossiers[0] : null;
+          });
+        }
+      }
+
+      if (statsRes.ok) {
+        const statsData = await statsRes.json();
+        if (statsData.success && statsData.statistics) {
+          setStatistics(statsData.statistics);
+        }
+      }
+    } catch (err) {
+      console.warn('Error fetching investigations or statistics:', err);
     }
-  }, [allDossiers]);
+  };
+
+  useEffect(() => {
+    refreshInvestigationsAndStats();
+  }, []);
+
+  // Handle individual deletion with backend persistence and stat recalculation
+  const handleDeleteInvestigation = async (id: string): Promise<boolean> => {
+    try {
+      const res = await fetch(`/api/investigations/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAllDossiers((prev) => {
+          const updated = prev.filter((d) => d.id !== id);
+          if (activeInvestigationDossier?.id === id) {
+            setActiveInvestigationDossier(updated.length > 0 ? updated[0] : null);
+          }
+          return updated;
+        });
+
+        if (data.statistics) {
+          setStatistics(data.statistics);
+        } else {
+          refreshInvestigationsAndStats();
+        }
+        return true;
+      }
+    } catch (err) {
+      console.error('Failed to delete investigation:', err);
+    }
+    return false;
+  };
+
+  // Handle edit investigation with full re-verification and state update
+  const handleEditInvestigation = async (
+    id: string,
+    newClaimText: string
+  ): Promise<{ success: boolean; dossier?: ClaimDossier; error?: string }> => {
+    try {
+      const res = await fetch(`/api/investigations/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          claim: newClaimText,
+          language: currentLang,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success && data.dossier) {
+        const updatedDossier: ClaimDossier = data.dossier;
+
+        // Update in allDossiers list immediately
+        setAllDossiers((prev) =>
+          prev.map((d) => (d.id === id ? updatedDossier : d))
+        );
+
+        // If this dossier is currently active, update it immediately
+        setActiveInvestigationDossier((prev) =>
+          prev?.id === id ? updatedDossier : prev
+        );
+
+        // Update statistics immediately
+        if (data.statistics) {
+          setStatistics(data.statistics);
+        } else {
+          refreshInvestigationsAndStats();
+        }
+
+        return { success: true, dossier: updatedDossier };
+      } else {
+        return {
+          success: false,
+          error: data.error || 'Failed to update and re-investigate claim.',
+        };
+      }
+    } catch (err: any) {
+      console.error('Failed to edit investigation:', err);
+      return {
+        success: false,
+        error: err?.message || 'Network error while re-investigating claim.',
+      };
+    }
+  };
 
   // Handle live claim investigation
   const handleStartInvestigation = async (
@@ -122,6 +217,7 @@ export default function App() {
           claim: rawText,
           mode,
           imageBase64,
+          language: currentLang,
         }),
       });
 
@@ -148,6 +244,9 @@ export default function App() {
     setIsInvestigating(false);
     setInvestigationStatusMessage('');
     setActiveTab('verify');
+
+    // Refresh live statistics from backend database
+    refreshInvestigationsAndStats();
   };
 
   // Gated Authentication view
@@ -218,8 +317,11 @@ export default function App() {
             currentLang={currentLang}
             activeDossier={activeInvestigationDossier}
             allDossiers={allDossiers}
+            statistics={statistics}
             onSelectDossier={(dossier) => setActiveInvestigationDossier(dossier)}
             onStartInvestigation={handleStartInvestigation}
+            onDeleteDossier={handleDeleteInvestigation}
+            onEditDossier={handleEditInvestigation}
             isInvestigating={isInvestigating}
             investigationStatusMessage={investigationStatusMessage}
             onOpenAuthorities={() => setShowAuthorities(true)}
@@ -233,10 +335,12 @@ export default function App() {
             currentLang={currentLang}
             allDossiers={allDossiers}
             activeDossier={activeInvestigationDossier}
+            statistics={statistics}
             onInspectDossier={(dossier) => {
               setActiveInvestigationDossier(dossier);
               setActiveTab('verify');
             }}
+            onDeleteInvestigation={handleDeleteInvestigation}
             onRunNewAudit={() => setActiveTab('verify')}
           />
         )}

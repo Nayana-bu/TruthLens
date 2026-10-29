@@ -1,4 +1,4 @@
-import { EvidenceSource, Language } from '../types';
+import type { EvidenceSource, Language } from '../types.ts';
 
 /**
  * Repository Name Translations (Kannada, Hindi, English)

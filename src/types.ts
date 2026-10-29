@@ -145,6 +145,8 @@ export interface ClaimDossier {
     people?: string[];
   };
   evidenceAnalysis?: EvidenceAnalysis;
+  evidenceStrength?: string;
+  submissionMode?: SubmissionMode;
 }
 
 export interface CommunitySubmission {
@@ -188,4 +190,39 @@ export interface VerifiedAuthority {
   description: string;
   verifiedBadge: string;
   jurisdiction: string;
+}
+
+export interface InvestigationRecord {
+  id: string;
+  userId?: string;
+  originalInput: string;
+  extractedText: string;
+  inputType: SubmissionMode;
+  verdict: VerdictType;
+  clearVerdictStatus: ClearVerdictStatus;
+  verdictLabel: string;
+  confidenceScore: number;
+  evidenceStrength?: string;
+  language: Language;
+  status: 'completed' | 'failed' | 'processing';
+  errorMessage?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  dossier: ClaimDossier;
+}
+
+export interface InvestigationStatistics {
+  total: number;
+  trueCount: number;
+  truePercent: number;
+  fakeCount: number;
+  fakePercent: number;
+  misleadingCount: number;
+  misleadingPercent: number;
+  partlyTrueCount: number;
+  partlyTruePercent: number;
+  unverifiedCount: number;
+  unverifiedPercent: number;
+  contextMissingCount: number;
+  contextMissingPercent: number;
 }

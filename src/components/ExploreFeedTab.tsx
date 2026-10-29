@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { ClaimDossier, Language, VerdictType } from '../types';
-import { INITIAL_DOSSIERS, UI_TRANSLATIONS } from '../data/mockData';
+import type { ClaimDossier, Language, VerdictType } from '../types';
+import { UI_TRANSLATIONS } from '../data/mockData';
 
 interface ExploreFeedTabProps {
   currentLang: Language;
@@ -10,10 +10,10 @@ interface ExploreFeedTabProps {
 
 export const ExploreFeedTab: React.FC<ExploreFeedTabProps> = ({
   currentLang,
-  allDossiers,
+  allDossiers = [],
   onInspectDossier,
 }) => {
-  const dossiersList = allDossiers && allDossiers.length > 0 ? allDossiers : INITIAL_DOSSIERS;
+  const dossiersList = allDossiers;
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedVerdict, setSelectedVerdict] = useState<string>('all');

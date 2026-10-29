@@ -1,14 +1,17 @@
 import React, { useState, useRef } from 'react';
-import { ClaimDossier, Language, SubmissionMode } from '../types';
+import type { ClaimDossier, Language, SubmissionMode, InvestigationStatistics } from '../types';
 import { speakText, stopSpeech } from '../utils/speechEngine';
 import { ReportFakeNewsModal } from './ReportFakeNewsModal';
 
 interface DashboardViewProps {
   currentLang: Language;
-  activeDossier: ClaimDossier;
+  activeDossier: ClaimDossier | null;
   allDossiers: ClaimDossier[];
+  statistics?: InvestigationStatistics;
   onSelectDossier: (dossier: ClaimDossier) => void;
   onStartInvestigation: (claimText: string, mode: SubmissionMode, imageBase64?: string) => void;
+  onDeleteDossier?: (id: string) => void;
+  onEditDossier?: (id: string, newClaim: string) => Promise<{ success: boolean; dossier?: ClaimDossier; error?: string }>;
   isInvestigating: boolean;
   investigationStatusMessage?: string;
   onOpenAuthorities: () => void;
@@ -19,8 +22,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   currentLang,
   activeDossier,
   allDossiers,
+  statistics,
   onSelectDossier,
   onStartInvestigation,
+  onDeleteDossier,
+  onEditDossier,
   isInvestigating,
   investigationStatusMessage,
   onOpenAuthorities,
@@ -32,6 +38,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [copiedShare, setCopiedShare] = useState(false);
+
+  // Trending cards: three-dot menu and modal states
+  const [openMenuCardId, setOpenMenuCardId] = useState<string | null>(null);
+  const [editingCardDossier, setEditingCardDossier] = useState<ClaimDossier | null>(null);
+  const [editClaimText, setEditClaimText] = useState('');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [deletingCardDossier, setDeletingCardDossier] = useState<ClaimDossier | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [toastNotification, setToastNotification] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const carouselRef = useRef<HTMLDivElement>(null);
@@ -47,7 +63,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const handleInvestigateClick = () => {
     const trimmed = inputText.trim();
     if (!trimmed) {
-      onStartInvestigation(activeDossier.originalClaim, submissionMode);
+      if (activeDossier?.originalClaim) {
+        onStartInvestigation(activeDossier.originalClaim, submissionMode);
+      }
       return;
     }
     onStartInvestigation(trimmed, submissionMode);
@@ -83,6 +101,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   };
 
   const handlePlayVoice = (lang: Language) => {
+    if (!activeDossier) return;
     if (isSpeaking && activeSpeechLang === lang) {
       stopSpeech();
       setIsSpeaking(false);
@@ -107,7 +126,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   };
 
   const handleShare = () => {
-    const textToCopy = `TruthLens Verify Fact-Check: "${activeDossier.originalClaim}"\nVerdict: ${activeDossier.verdictLabel}\nDetails: ${activeDossier.summary.en}`;
+    if (!activeDossier) return;
+    const textToCopy = `TruthLens Verify Fact-Check: "${activeDossier.originalClaim}"\nVerdict: ${activeDossier.verdictLabel}\nDetails: ${activeDossier.summary?.en || ''}`;
     if (navigator.clipboard) {
       navigator.clipboard.writeText(textToCopy);
       setCopiedShare(true);
@@ -121,22 +141,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }
   };
 
-  const isFake =
-    activeDossier.clearVerdictStatus === 'FAKE' || activeDossier.verdict === 'false';
-  const isMisleading =
-    activeDossier.clearVerdictStatus === 'MISLEADING' || activeDossier.verdict === 'misleading';
-  const isTrue =
-    activeDossier.clearVerdictStatus === 'REAL' || activeDossier.verdict === 'verified_true';
-  const isPartlyTrue =
-    activeDossier.clearVerdictStatus === 'PARTLY_TRUE' || activeDossier.verdict === 'partly_true';
-  const isContextMissing =
-    activeDossier.clearVerdictStatus === 'CONTEXT_MISSING' || activeDossier.verdict === 'context_missing';
-  const isUnverified =
-    activeDossier.clearVerdictStatus === 'UNVERIFIED' ||
-    activeDossier.verdict === 'unverified' ||
-    (!isFake && !isMisleading && !isTrue && !isPartlyTrue && !isContextMissing);
+  const isFake = activeDossier
+    ? activeDossier.clearVerdictStatus === 'FAKE' || activeDossier.verdict === 'false'
+    : false;
+  const isMisleading = activeDossier
+    ? activeDossier.clearVerdictStatus === 'MISLEADING' || activeDossier.verdict === 'misleading'
+    : false;
+  const isTrue = activeDossier
+    ? activeDossier.clearVerdictStatus === 'REAL' || activeDossier.verdict === 'verified_true'
+    : false;
+  const isPartlyTrue = activeDossier
+    ? activeDossier.clearVerdictStatus === 'PARTLY_TRUE' || activeDossier.verdict === 'partly_true'
+    : false;
+  const isContextMissing = activeDossier
+    ? activeDossier.clearVerdictStatus === 'CONTEXT_MISSING' || activeDossier.verdict === 'context_missing'
+    : false;
+  const isUnverified = activeDossier
+    ? activeDossier.clearVerdictStatus === 'UNVERIFIED' ||
+      activeDossier.verdict === 'unverified' ||
+      (!isFake && !isMisleading && !isTrue && !isPartlyTrue && !isContextMissing)
+    : false;
 
   const getRegionalBadgeLabel = () => {
+    if (!activeDossier) return '';
     if (isFake) {
       return currentLang === 'kn' ? 'ಸುಳ್ಳು ಸುದ್ದಿ' : currentLang === 'hi' ? 'फर्जी खबर' : 'Debunked False';
     }
@@ -330,40 +357,57 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           )}
 
           {/* 2. INVESTIGATION RESULT CARD */}
-          <div className="bg-white rounded-2xl border border-[#e2e8f0] p-5 sm:p-6 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col gap-4">
-            {/* Card header */}
-            <div className="flex items-center justify-between pb-3 border-b border-[#f1f5f9]">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-md bg-[#eff6ff] text-[#2563eb] flex items-center justify-center">
-                  <span className="material-symbols-outlined text-[16px]">article</span>
-                </div>
-                <h3 className="font-['Plus_Jakarta_Sans'] font-bold text-xs sm:text-sm text-[#0f172a]">
-                  {currentLang === 'kn' ? 'ತನಿಖಾ ವರದಿ' : currentLang === 'hi' ? 'जांच परिणाम' : 'Investigation Result'}
-                </h3>
+          {!activeDossier ? (
+            <div className="bg-white rounded-2xl border border-dashed border-[#cbd5e1] p-8 sm:p-12 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col items-center justify-center text-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-[#eff6ff] text-[#2563eb] flex items-center justify-center">
+                <span className="material-symbols-outlined text-[28px]">search_check</span>
               </div>
-
-              <div className="flex items-center gap-3 text-xs text-[#64748b]">
-                <span className="text-[11px]">{activeDossier.timeAgo || 'Verified 2 minutes ago'}</span>
-                <button
-                  type="button"
-                  onClick={handleShare}
-                  title="Share Debunk"
-                  className="hover:text-[#0f172a] transition-colors cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-[18px]">
-                    {copiedShare ? 'check' : 'share'}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowReportModal(true)}
-                  title="More actions / Report"
-                  className="hover:text-[#0f172a] transition-colors cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-[18px]">more_horiz</span>
-                </button>
-              </div>
+              <h3 className="font-['Plus_Jakarta_Sans'] font-bold text-base text-[#0f172a]">
+                {currentLang === 'kn' ? 'ಯಾವುದೇ ಸಕ್ರಿಯ ತನಿಖೆ ಆಯ್ಕೆಯಾಗಿಲ್ಲ' : currentLang === 'hi' ? 'कोई सक्रिय जांच चयनित नहीं है' : 'No Active Investigation Selected'}
+              </h3>
+              <p className="text-xs sm:text-sm text-[#64748b] max-w-md">
+                {currentLang === 'kn'
+                  ? 'ನೈಜ-ಸಮಯದ ಪ್ರಾಥಮಿಕ ಮೂಲಗಳು ಮತ್ತು ಅಧಿಕೃತ ಗೆಜೆಟ್‌ಗಳೊಂದಿಗೆ ಪರಿಶೀಲಿಸಲು ಮೇಲಿನ ಇನ್‌ಪುಟ್‌ನಲ್ಲಿ ಯಾವುದೇ ಸುದ್ದಿಯ ಕ್ಲೈಮ್ ನಮೂದಿಸಿ.'
+                  : currentLang === 'hi'
+                  ? 'सरकारी गजट व प्राथमिक स्रोतों से जांचने के लिए ऊपर दिए गए बॉक्स में कोई खबर या दावा दर्ज करें।'
+                  : 'Enter a news claim, WhatsApp message, screenshot, or URL above to run an evidence-grounded verification.'}
+              </p>
             </div>
+          ) : (
+            <div className="bg-white rounded-2xl border border-[#e2e8f0] p-5 sm:p-6 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col gap-4">
+              {/* Card header */}
+              <div className="flex items-center justify-between pb-3 border-b border-[#f1f5f9]">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-md bg-[#eff6ff] text-[#2563eb] flex items-center justify-center">
+                    <span className="material-symbols-outlined text-[16px]">article</span>
+                  </div>
+                  <h3 className="font-['Plus_Jakarta_Sans'] font-bold text-xs sm:text-sm text-[#0f172a]">
+                    {currentLang === 'kn' ? 'ತನಿಖಾ ವರದಿ' : currentLang === 'hi' ? 'जांच परिणाम' : 'Investigation Result'}
+                  </h3>
+                </div>
+
+                <div className="flex items-center gap-3 text-xs text-[#64748b]">
+                  <span className="text-[11px]">{activeDossier.timeAgo || 'Verified recently'}</span>
+                  <button
+                    type="button"
+                    onClick={handleShare}
+                    title="Share Debunk"
+                    className="hover:text-[#0f172a] transition-colors cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">
+                      {copiedShare ? 'check' : 'share'}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowReportModal(true)}
+                    title="More actions / Report"
+                    className="hover:text-[#0f172a] transition-colors cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">more_horiz</span>
+                  </button>
+                </div>
+              </div>
 
             {/* Verdict Badges Row */}
             <div className="flex items-center gap-2 flex-wrap">
@@ -528,8 +572,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
             </div>
           </div>
+        )}
 
-          {/* 3. OFFICIAL EVIDENCES & SOURCES (3) */}
+          {/* 3. OFFICIAL EVIDENCES & SOURCES */}
           <div className="bg-white rounded-2xl border border-[#e2e8f0] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col gap-4">
             <div className="flex items-center justify-between pb-2 border-b border-[#f1f5f9]">
               <div className="flex items-center gap-2">
@@ -537,7 +582,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <span className="material-symbols-outlined text-[16px]">verified</span>
                 </div>
                 <h3 className="font-['Plus_Jakarta_Sans'] font-bold text-xs sm:text-sm text-[#0f172a]">
-                  Official Evidences & Sources ({activeDossier.sources?.length || 3})
+                  Official Evidences & Sources ({activeDossier?.sources?.length || 0})
                 </h3>
               </div>
 
@@ -551,98 +596,56 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </button>
             </div>
 
-            {/* 3-card horizontal grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {/* Card 1 */}
-              <div className="p-3.5 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] flex flex-col justify-between gap-2.5">
-                <div className="flex flex-col gap-1.5">
-                  <div className="w-8 h-8 rounded-lg bg-white border border-[#e2e8f0] flex items-center justify-center text-[#1e293b]">
-                    <span className="material-symbols-outlined text-[18px]">account_balance</span>
+            {/* Dynamic sources grid */}
+            {activeDossier && activeDossier.sources && activeDossier.sources.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {activeDossier.sources.slice(0, 6).map((src, idx) => (
+                  <div key={idx} className="p-3.5 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] flex flex-col justify-between gap-2.5">
+                    <div className="flex flex-col gap-1.5">
+                      <div className="w-8 h-8 rounded-lg bg-white border border-[#e2e8f0] flex items-center justify-center text-[#1e293b]">
+                        <span className="material-symbols-outlined text-[18px]">
+                          {src.isPrimary ? 'account_balance' : 'newspaper'}
+                        </span>
+                      </div>
+                      <h4 className="font-['Plus_Jakarta_Sans'] font-bold text-xs text-[#0f172a] leading-tight line-clamp-1">
+                        {src.name}
+                      </h4>
+                      <span className={`inline-block self-start px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                        src.status === 'confirmed' || src.status === 'corroborated'
+                          ? 'bg-[#dcfce7] text-[#15803d]'
+                          : src.status === 'refuted' || src.status === 'contradicted'
+                          ? 'bg-[#fee2e2] text-[#b91c1c]'
+                          : 'bg-[#eff6ff] text-[#1e40af]'
+                      }`}>
+                        {src.category || 'Corroboration'}
+                      </span>
+                      <p className="text-[11px] text-[#64748b] leading-snug line-clamp-3">
+                        {src.details}
+                      </p>
+                    </div>
+
+                    {src.url ? (
+                      <a
+                        href={src.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[11px] font-semibold text-[#2563eb] hover:underline flex items-center gap-1"
+                      >
+                        <span>Visit official source</span>
+                        <span className="material-symbols-outlined text-[13px]">arrow_forward</span>
+                      </a>
+                    ) : (
+                      <span className="text-[10px] text-[#94a3b8] italic">Official registry reference</span>
+                    )}
                   </div>
-                  <h4 className="font-['Plus_Jakarta_Sans'] font-bold text-xs text-[#0f172a] leading-tight">
-                    {activeDossier.sources?.[0]?.name || 'National Civic Verification Desk'}
-                  </h4>
-                  <span className="inline-block self-start px-2 py-0.5 rounded-md bg-[#fee2e2] text-[#b91c1c] text-[10px] font-bold">
-                    {activeDossier.sources?.[0]?.category || 'Government Clarification'}
-                  </span>
-                  <p className="text-[11px] text-[#64748b] leading-snug">
-                    {activeDossier.sources?.[0]?.details ||
-                      'Primary official desk. No matching notifications found in central registry.'}
-                  </p>
-                </div>
-
-                <a
-                  href={activeDossier.sources?.[0]?.url || 'https://factcheck.pib.gov.in'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[11px] font-semibold text-[#2563eb] hover:underline flex items-center gap-1"
-                >
-                  <span>Visit official source</span>
-                  <span className="material-symbols-outlined text-[13px]">arrow_forward</span>
-                </a>
+                ))}
               </div>
-
-              {/* Card 2 */}
-              <div className="p-3.5 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] flex flex-col justify-between gap-2.5">
-                <div className="flex flex-col gap-1.5">
-                  <div className="w-8 h-8 rounded-lg bg-white border border-[#e2e8f0] flex items-center justify-center text-[#2563eb]">
-                    <span className="material-symbols-outlined text-[18px]">newspaper</span>
-                  </div>
-                  <h4 className="font-['Plus_Jakarta_Sans'] font-bold text-xs text-[#0f172a] leading-tight">
-                    {activeDossier.sources?.[1]?.name || 'PIB Fact Check & Civic Archive'}
-                  </h4>
-                  <span className="inline-block self-start px-2 py-0.5 rounded-md bg-[#fee2e2] text-[#b91c1c] text-[10px] font-bold">
-                    {activeDossier.sources?.[1]?.category || 'Government Clarification'}
-                  </span>
-                  <p className="text-[11px] text-[#64748b] leading-snug">
-                    {activeDossier.sources?.[1]?.details ||
-                      'Flagged as unverified viral forward circulating across community channels.'}
-                  </p>
-                </div>
-
-                <a
-                  href={activeDossier.sources?.[1]?.url || 'https://factcheck.pib.gov.in'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[11px] font-semibold text-[#2563eb] hover:underline flex items-center gap-1"
-                >
-                  <span>Visit official source</span>
-                  <span className="material-symbols-outlined text-[13px]">arrow_forward</span>
-                </a>
+            ) : (
+              <div className="py-8 text-center text-xs text-[#94a3b8] flex flex-col items-center justify-center gap-2">
+                <span className="material-symbols-outlined text-[24px] text-[#cbd5e1]">travel_explore</span>
+                <span>{currentLang === 'kn' ? 'ಯಾವುದೇ ಮೂಲಗಳು ದಾಖಲಾಗಿಲ್ಲ' : currentLang === 'hi' ? 'कोई स्रोत रिकॉर्ड नहीं है' : 'No sources to display yet. Run an investigation to retrieve corroborating records.'}</span>
               </div>
-
-              {/* Card 3 */}
-              <div className="p-3.5 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] flex flex-col justify-between gap-2.5">
-                <div className="flex flex-col gap-1.5">
-                  <div className="w-8 h-8 rounded-lg bg-white border border-[#e2e8f0] flex items-center justify-center text-[#ea4335]">
-                    <span className="font-bold text-xs">G</span>
-                  </div>
-                  <h4 className="font-['Plus_Jakarta_Sans'] font-bold text-xs text-[#0f172a] leading-tight">
-                    {activeDossier.sources?.[2]?.name || 'Google Search Fact-Check Index'}
-                  </h4>
-                  <span className="inline-block self-start px-2 py-0.5 rounded-md bg-[#eff6ff] text-[#2563eb] text-[10px] font-bold">
-                    {activeDossier.sources?.[2]?.category || 'Searched Registry'}
-                  </span>
-                  <p className="text-[11px] text-[#64748b] leading-snug">
-                    {activeDossier.sources?.[2]?.details ||
-                      'Live web search queries show this claim is false across trusted sources.'}
-                  </p>
-                </div>
-
-                <a
-                  href={
-                    activeDossier.sources?.[2]?.url ||
-                    'https://www.google.com/search?q=fact+check'
-                  }
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[11px] font-semibold text-[#2563eb] hover:underline flex items-center gap-1"
-                >
-                  <span>Visit official source</span>
-                  <span className="material-symbols-outlined text-[13px]">arrow_forward</span>
-                </a>
-              </div>
-            </div>
+            )}
           </div>
 
           {/* 4. TRENDING VERIFICATIONS HORIZONTAL CAROUSEL */}
@@ -669,96 +672,158 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
             {/* Horizontal scroll container with right arrow button */}
             <div className="relative">
-              <div
-                ref={carouselRef}
-                className="flex items-stretch gap-3 overflow-x-auto pb-2 no-scrollbar scroll-smooth"
-              >
-                {allDossiers.slice(0, 6).map((dossier, idx) => {
-                  const isItemFake =
-                    dossier.clearVerdictStatus === 'FAKE' || dossier.verdict === 'false';
-                  const isItemMisleading =
-                    dossier.clearVerdictStatus === 'MISLEADING' ||
-                    dossier.verdict === 'misleading';
-                  const isItemTrue =
-                    dossier.clearVerdictStatus === 'REAL' || dossier.verdict === 'verified_true';
-                  const isItemPartly =
-                    dossier.clearVerdictStatus === 'PARTLY_TRUE' || dossier.verdict === 'partly_true';
-                  const isItemContext =
-                    dossier.clearVerdictStatus === 'CONTEXT_MISSING' || dossier.verdict === 'context_missing';
+              {allDossiers.length > 0 ? (
+                <div
+                  ref={carouselRef}
+                  className="flex items-stretch gap-3 overflow-x-auto pb-2 no-scrollbar scroll-smooth"
+                >
+                  {allDossiers.slice(0, 6).map((dossier, idx) => {
+                    const isItemFake =
+                      dossier.clearVerdictStatus === 'FAKE' || dossier.verdict === 'false';
+                    const isItemMisleading =
+                      dossier.clearVerdictStatus === 'MISLEADING' ||
+                      dossier.verdict === 'misleading';
+                    const isItemTrue =
+                      dossier.clearVerdictStatus === 'REAL' || dossier.verdict === 'verified_true';
+                    const isItemPartly =
+                      dossier.clearVerdictStatus === 'PARTLY_TRUE' || dossier.verdict === 'partly_true';
+                    const isItemContext =
+                      dossier.clearVerdictStatus === 'CONTEXT_MISSING' || dossier.verdict === 'context_missing';
 
-                  const badgeClass = isItemFake
-                    ? 'bg-[#fee2e2] text-[#dc2626]'
-                    : isItemMisleading
-                    ? 'bg-[#fef3c7] text-[#d97706]'
-                    : isItemPartly
-                    ? 'bg-[#ffedd5] text-[#ea580c]'
-                    : isItemContext
-                    ? 'bg-[#ede9fe] text-[#7c3aed]'
-                    : isItemTrue
-                    ? 'bg-[#dcfce7] text-[#16a34a]'
-                    : 'bg-[#f1f5f9] text-[#475569]';
+                    const badgeClass = isItemFake
+                      ? 'bg-[#fee2e2] text-[#dc2626]'
+                      : isItemMisleading
+                      ? 'bg-[#fef3c7] text-[#d97706]'
+                      : isItemPartly
+                      ? 'bg-[#ffedd5] text-[#ea580c]'
+                      : isItemContext
+                      ? 'bg-[#ede9fe] text-[#7c3aed]'
+                      : isItemTrue
+                      ? 'bg-[#dcfce7] text-[#16a34a]'
+                      : 'bg-[#f1f5f9] text-[#475569]';
 
-                  const badgeLabel = isItemFake
-                    ? 'FAKE'
-                    : isItemMisleading
-                    ? 'MISLEADING'
-                    : isItemPartly
-                    ? 'PARTLY'
-                    : isItemContext
-                    ? 'CONTEXT'
-                    : isItemTrue
-                    ? 'TRUE'
-                    : 'UNVERIFIED';
+                    const badgeLabel = isItemFake
+                      ? 'FAKE'
+                      : isItemMisleading
+                      ? 'MISLEADING'
+                      : isItemPartly
+                      ? 'PARTLY'
+                      : isItemContext
+                      ? 'CONTEXT'
+                      : isItemTrue
+                      ? 'TRUE'
+                      : 'UNVERIFIED';
 
-                  return (
-                    <div
-                      key={dossier.id || idx}
-                      onClick={() => onSelectDossier(dossier)}
-                      className={`min-w-[210px] sm:min-w-[220px] max-w-[220px] p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between gap-2.5 ${
-                        activeDossier.id === dossier.id
-                          ? 'border-[#2563eb] bg-[#eff6ff]/60 shadow-xs ring-1 ring-[#2563eb]'
-                          : 'border-[#e2e8f0] bg-[#f8fafc] hover:bg-white hover:border-[#cbd5e1]'
-                      }`}
-                    >
-                      <div className="flex flex-col gap-1.5">
-                        <div className="flex items-center justify-between">
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1 ${badgeClass}`}
-                          >
-                            <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                            {badgeLabel}
-                          </span>
-                          <span className="text-[10px] text-[#94a3b8]">{dossier.timeAgo}</span>
+                    return (
+                      <div
+                        key={dossier.id || idx}
+                        onClick={() => onSelectDossier(dossier)}
+                        className={`min-w-[210px] sm:min-w-[220px] max-w-[220px] p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between gap-2.5 ${
+                          activeDossier?.id === dossier.id
+                            ? 'border-[#2563eb] bg-[#eff6ff]/60 shadow-xs ring-1 ring-[#2563eb]'
+                            : 'border-[#e2e8f0] bg-[#f8fafc] hover:bg-white hover:border-[#cbd5e1]'
+                        }`}
+                      >
+                        <div className="flex flex-col gap-1.5">
+                          <div className="flex items-center justify-between relative">
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1 ${badgeClass}`}
+                            >
+                              <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                              {badgeLabel}
+                            </span>
+
+                            <div className="flex items-center gap-1">
+                              <span className="text-[10px] text-[#94a3b8]">{dossier.timeAgo}</span>
+                              <div className="relative">
+                                <button
+                                  type="button"
+                                  title="Investigation options"
+                                  aria-label="Investigation options"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenMenuCardId(openMenuCardId === dossier.id ? null : dossier.id);
+                                  }}
+                                  className="w-6 h-6 rounded-md hover:bg-[#e2e8f0]/80 text-[#64748b] hover:text-[#0f172a] flex items-center justify-center transition-colors cursor-pointer"
+                                >
+                                  <span className="material-symbols-outlined text-[17px]">more_vert</span>
+                                </button>
+
+                                {/* Dropdown Menu */}
+                                {openMenuCardId === dossier.id && (
+                                  <div
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="absolute right-0 top-7 z-30 w-44 bg-white rounded-xl shadow-lg border border-[#e2e8f0] py-1 text-xs animate-in fade-in duration-100"
+                                  >
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setOpenMenuCardId(null);
+                                        setEditingCardDossier(dossier);
+                                        setEditClaimText(dossier.originalClaim || dossier.title);
+                                        setEditError(null);
+                                      }}
+                                      className="w-full px-3 py-2 text-left font-semibold text-[#334155] hover:bg-[#eff6ff] hover:text-[#2563eb] flex items-center gap-2 cursor-pointer transition-colors"
+                                    >
+                                      <span className="material-symbols-outlined text-[16px]">edit_note</span>
+                                      <span>Edit Investigation</span>
+                                    </button>
+                                    <div className="h-[1px] bg-[#f1f5f9] my-0.5" />
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setOpenMenuCardId(null);
+                                        setDeletingCardDossier(dossier);
+                                      }}
+                                      className="w-full px-3 py-2 text-left font-semibold text-[#dc2626] hover:bg-[#fef2f2] flex items-center gap-2 cursor-pointer transition-colors"
+                                    >
+                                      <span className="material-symbols-outlined text-[16px]">delete</span>
+                                      <span>Delete Investigation</span>
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <h4 className="font-['Plus_Jakarta_Sans'] font-bold text-xs text-[#0f172a] line-clamp-2 leading-tight">
+                            {dossier.title}
+                          </h4>
+
+                          <p className="text-[11px] text-[#64748b] line-clamp-2 leading-snug">
+                            {dossier.summary?.en || dossier.verdictSubtitle}
+                          </p>
                         </div>
-
-                        <h4 className="font-['Plus_Jakarta_Sans'] font-bold text-xs text-[#0f172a] line-clamp-2 leading-tight">
-                          {dossier.title}
-                        </h4>
-
-                        <p className="text-[11px] text-[#64748b] line-clamp-2 leading-snug">
-                          {dossier.summary?.en || dossier.verdictSubtitle}
-                        </p>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="py-8 text-center text-xs text-[#94a3b8] flex flex-col items-center justify-center gap-1.5">
+                  <span className="material-symbols-outlined text-[24px] text-[#cbd5e1]">history_edu</span>
+                  <span>{currentLang === 'kn' ? 'ಯಾವುದೇ ತನಿಖೆಗಳು ದಾಖಲಾಗಿಲ್ಲ. ಹೊಸ ತನಿಖೆಗಳು ಇಲ್ಲಿ ಕಾಣಿಸಿಕೊಳ್ಳುತ್ತವೆ.' : currentLang === 'hi' ? 'कोई जांच अभी सुरक्षित नहीं है। नई जांचें यहां प्रदर्शित होंगी।' : 'No saved investigations yet. Newly verified claims will appear here.'}</span>
+                </div>
+              )}
 
               {/* Next arrow icon button on right */}
-              <button
-                type="button"
-                onClick={handleScrollRight}
-                className="absolute -right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white shadow-md border border-[#e2e8f0] text-[#0f172a] hover:bg-[#f8fafc] flex items-center justify-center transition-all cursor-pointer z-10"
-              >
-                <span className="material-symbols-outlined text-[18px]">chevron_right</span>
-              </button>
+              {allDossiers.length > 2 && (
+                <button
+                  type="button"
+                  onClick={handleScrollRight}
+                  className="absolute -right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white shadow-md border border-[#e2e8f0] text-[#0f172a] hover:bg-[#f8fafc] flex items-center justify-center transition-all cursor-pointer z-10"
+                >
+                  <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
 
         {/* ================= RIGHT COLUMN (4 cols on lg) ================= */}
         <div className="lg:col-span-4 flex flex-col gap-4">
-          {/* 1. OVERALL STATS CARD: 14,289 Claims */}
+          {/* 1. OVERALL STATS CARD: Real Database Statistics */}
           <div className="bg-white rounded-2xl border border-[#e2e8f0] p-4 sm:p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -767,15 +832,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
                 <div>
                   <h3 className="font-['Plus_Jakarta_Sans'] font-extrabold text-xl text-[#0f172a] leading-none">
-                    14,289
+                    {(statistics?.total ?? 0).toLocaleString()}
                   </h3>
                   <span className="text-[11px] font-medium text-[#64748b]">
-                    Claims verified so far
+                    {currentLang === 'kn' ? 'ಪರಿಶೀಲಿಸಿದ ಒಟ್ಟು ಕ್ಲೈಮ್‌ಗಳು' : currentLang === 'hi' ? 'कुल सत्यापित दावे' : 'Claims verified so far'}
                   </span>
                 </div>
               </div>
 
-              {/* Rising trend graph indicator */}
+              {/* Trend indicator */}
               <div className="flex items-center text-[#16a34a] text-xs font-bold gap-0.5">
                 <span className="material-symbols-outlined text-[20px]">trending_up</span>
               </div>
@@ -784,41 +849,41 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {/* 2x2 Breakdown grid */}
             <div className="grid grid-cols-2 gap-2.5 pt-1">
               <div className="p-2.5 rounded-xl bg-[#f8fafc] border border-[#f1f5f9] flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-[#dcfce7] text-[#16a34a] flex items-center justify-center text-[12px]">
+                <div className="w-6 h-6 rounded-full bg-[#dcfce7] text-[#16a34a] flex items-center justify-center text-[12px] font-bold">
                   ✓
                 </div>
                 <div className="flex flex-col">
-                  <span className="font-bold text-xs text-[#0f172a]">65%</span>
+                  <span className="font-bold text-xs text-[#0f172a]">{statistics?.truePercent ?? 0}%</span>
                   <span className="text-[10px] text-[#64748b]">True Claims</span>
                 </div>
               </div>
 
               <div className="p-2.5 rounded-xl bg-[#f8fafc] border border-[#f1f5f9] flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-[#fee2e2] text-[#dc2626] flex items-center justify-center text-[12px]">
+                <div className="w-6 h-6 rounded-full bg-[#fee2e2] text-[#dc2626] flex items-center justify-center text-[12px] font-bold">
                   ✕
                 </div>
                 <div className="flex flex-col">
-                  <span className="font-bold text-xs text-[#0f172a]">25%</span>
+                  <span className="font-bold text-xs text-[#0f172a]">{statistics?.fakePercent ?? 0}%</span>
                   <span className="text-[10px] text-[#64748b]">Fake Claims</span>
                 </div>
               </div>
 
               <div className="p-2.5 rounded-xl bg-[#f8fafc] border border-[#f1f5f9] flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-[#fef3c7] text-[#d97706] flex items-center justify-center text-[12px]">
+                <div className="w-6 h-6 rounded-full bg-[#fef3c7] text-[#d97706] flex items-center justify-center text-[12px] font-bold">
                   !
                 </div>
                 <div className="flex flex-col">
-                  <span className="font-bold text-xs text-[#0f172a]">8%</span>
+                  <span className="font-bold text-xs text-[#0f172a]">{statistics?.misleadingPercent ?? 0}%</span>
                   <span className="text-[10px] text-[#64748b]">Misleading</span>
                 </div>
               </div>
 
               <div className="p-2.5 rounded-xl bg-[#f8fafc] border border-[#f1f5f9] flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-[#eff6ff] text-[#2563eb] flex items-center justify-center text-[12px]">
+                <div className="w-6 h-6 rounded-full bg-[#eff6ff] text-[#2563eb] flex items-center justify-center text-[12px] font-bold">
                   ?
                 </div>
                 <div className="flex flex-col">
-                  <span className="font-bold text-xs text-[#0f172a]">2%</span>
+                  <span className="font-bold text-xs text-[#0f172a]">{statistics?.unverifiedPercent ?? 0}%</span>
                   <span className="text-[10px] text-[#64748b]">Unverified</span>
                 </div>
               </div>
@@ -836,11 +901,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </h3>
             </div>
             <p className="text-xs text-[#475569] leading-relaxed">
-              {activeDossier.summary?.[currentLang] ||
-                activeDossier.summary?.en ||
-                activeDossier.debunkExplanation?.[currentLang] ||
-                activeDossier.debunkExplanation?.en ||
-                'Multiple official sources confirm that Narendra Modi is the current Prime Minister of India. The claim circulated on social media is false and appears to be a fabricated political message. No credible evidence supports this claim.'}
+              {activeDossier
+                ? (activeDossier.summary?.[currentLang] ||
+                   activeDossier.summary?.en ||
+                   activeDossier.debunkExplanation?.[currentLang] ||
+                   activeDossier.debunkExplanation?.en ||
+                   'Evidence-backed investigation completed. Review sources below.')
+                : (currentLang === 'kn'
+                    ? 'ಯಾವುದೇ ಸಕ್ರಿಯ ತನಿಖೆ ಆಯ್ಕೆಯಾಗಿಲ್ಲ. ಸಾರಾಂಶಕ್ಕಾಗಿ ಕ್ಲೈಮ್ ನಮೂದಿಸಿ.'
+                    : currentLang === 'hi'
+                    ? 'कोई सक्रिय जांच चयनित नहीं है। सारांश हेतु दावा दर्ज करें।'
+                    : 'No active claim investigated yet. Enter news or a claim above to generate an evidence-backed summary.')}
             </p>
           </div>
 
@@ -855,31 +926,37 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </h3>
             </div>
 
-            <ul className="space-y-2 text-xs text-[#334155]">
-              {(activeDossier.redFlags && activeDossier.redFlags.length > 0
-                ? activeDossier.redFlags
-                : isFake
-                ? [
-                    currentLang === 'kn' ? 'ಯಾವುದೇ ಅಧಿಕೃತ ಸರ್ಕಾರಿ ಗೆಜೆಟ್ ಅಧಿಸೂಚನೆ ಲಭ್ಯವಿಲ್ಲ' : currentLang === 'hi' ? 'कोई आधिकारिक सरकारी गजट अधिसूचना नहीं मिली' : 'No official gazette notification supports this claim',
-                    currentLang === 'kn' ? 'ಸಂಬಂಧಿತ ಸಚಿವಾಲಯದಿಂದ ಯಾವುದೇ ಪತ್ರಿಕಾ ಪ್ರಕಟಣೆ ಇಲ್ಲ' : currentLang === 'hi' ? 'मंत्रालय या विभाग द्वारा कोई आधिकारिक आदेश नहीं' : 'No press release or ministry order found',
-                    currentLang === 'kn' ? 'ವೈರಲ್ ಸಂದೇಶದಲ್ಲಿ ಅಸಂಗತ ಫಾಂಟ್ ಮತ್ತು ಸ್ವರೂಪ ಕಂಡುಬಂದಿದೆ' : currentLang === 'hi' ? 'गलत फॉन्ट और प्रारूप विसंगतियां पाई गईं' : 'Inconsistent font and missing government format',
-                    currentLang === 'kn' ? 'ಚಿತ್ರ ಅಥವಾ ಪಠ್ಯ ಎಡಿಟ್ ಮಾಡಿರುವುದು ಪತ್ತೆಯಾಗಿದೆ' : currentLang === 'hi' ? 'वायरल संदेश/छवि में हेरफेर पाया गया' : 'Viral image or text appears to be manipulated',
-                  ]
-                : [
-                    currentLang === 'kn' ? 'ಅಧಿಕೃತ ಮೂಲಗಳಿಂದ ದೃಢೀಕರಿಸಲ್ಪಟ್ಟಿದೆ' : currentLang === 'hi' ? 'आधिकारिक अभिलेखों से पुष्टि की गई' : 'Corroborated by primary agency bulletins',
-                    currentLang === 'kn' ? 'ನೈಜ ದಾಖಲೆಗಳು ಮತ್ತು ಪ್ರಕಟಣೆಗಳು ಪರಿಶೀಲನೆಗೊಂಡಿವೆ' : currentLang === 'hi' ? 'वास्तविक रिकॉर्ड व प्रेस नोट सत्यापित' : 'Genuine press releases and order documents verified',
-                  ]
-              ).map((finding, idx) => (
-                <li key={idx} className="flex items-start gap-2">
-                  <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] flex-shrink-0 mt-0.5 ${
-                    isFake ? 'bg-[#fee2e2] text-[#dc2626]' : 'bg-[#dcfce7] text-[#16a34a]'
-                  }`}>
-                    {isFake ? '✕' : '✓'}
-                  </span>
-                  <span className="leading-snug">{finding}</span>
-                </li>
-              ))}
-            </ul>
+            {activeDossier ? (
+              <ul className="space-y-2 text-xs text-[#334155]">
+                {(activeDossier.redFlags && activeDossier.redFlags.length > 0
+                  ? activeDossier.redFlags
+                  : isFake
+                  ? [
+                      currentLang === 'kn' ? 'ಯಾವುದೇ ಅಧಿಕೃತ ಸರ್ಕಾರಿ ಗೆಜೆಟ್ ಅಧಿಸೂಚನೆ ಲಭ್ಯವಿಲ್ಲ' : currentLang === 'hi' ? 'कोई आधिकारिक सरकारी गजट अधिसूचना नहीं मिली' : 'No official gazette notification supports this claim',
+                      currentLang === 'kn' ? 'ಸಂಬಂಧಿತ ಸಚಿವಾಲಯದಿಂದ ಯಾವುದೇ ಪತ್ರಿಕಾ ಪ್ರಕಟಣೆ ಇಲ್ಲ' : currentLang === 'hi' ? 'मंत्रालय या विभाग द्वारा कोई आधिकारिक आदेश नहीं' : 'No press release or ministry order found',
+                      currentLang === 'kn' ? 'ವೈರಲ್ ಸಂದೇಶದಲ್ಲಿ ಅಸಂಗತ ಫಾಂಟ್ ಮತ್ತು ಸ್ವರೂಪ ಕಂಡುಬಂದಿದೆ' : currentLang === 'hi' ? 'गलत फॉन्ट और प्रारूप विसंगतियां पाई गईं' : 'Inconsistent font and missing government format',
+                      currentLang === 'kn' ? 'ಚಿತ್ರ ಅಥವಾ ಪಠ್ಯ ಎಡಿಟ್ ಮಾಡಿರುವುದು ಪತ್ತೆಯಾಗಿದೆ' : currentLang === 'hi' ? 'वायरल संदेश/छवि में हेरफेर पाया गया' : 'Viral image or text appears to be manipulated',
+                    ]
+                  : [
+                      currentLang === 'kn' ? 'ಅಧಿಕೃತ ಮೂಲಗಳಿಂದ ದೃಢೀಕರಿಸಲ್ಪಟ್ಟಿದೆ' : currentLang === 'hi' ? 'आधिकारिक अभिलेखों से पुष्टि की गई' : 'Corroborated by primary agency bulletins',
+                      currentLang === 'kn' ? 'ನೈಜ ದಾಖಲೆಗಳು ಮತ್ತು ಪ್ರಕಟಣೆಗಳು ಪರಿಶೀಲನೆಗೊಂಡಿವೆ' : currentLang === 'hi' ? 'वास्तविक रिकॉर्ड व प्रेस नोट सत्यापित' : 'Genuine press releases and order documents verified',
+                    ]
+                ).map((finding, idx) => (
+                  <li key={idx} className="flex items-start gap-2">
+                    <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] flex-shrink-0 mt-0.5 ${
+                      isFake ? 'bg-[#fee2e2] text-[#dc2626]' : 'bg-[#dcfce7] text-[#16a34a]'
+                    }`}>
+                      {isFake ? '✕' : '✓'}
+                    </span>
+                    <span className="leading-snug">{finding}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-xs text-[#94a3b8] italic">
+                {currentLang === 'kn' ? 'ತನಿಖೆಯ ನಂತರ ಸಾಕ್ಷ್ಯಾಧಾರ ಸಂಶೋಧನೆಗಳು ಇಲ್ಲಿ ಕಾಣಿಸುತ್ತವೆ.' : currentLang === 'hi' ? 'जांच के बाद साक्ष्य निष्कर्ष यहां दिखाई देंगे।' : 'Key findings will appear here once an investigation is run.'}
+              </p>
+            )}
           </div>
 
           {/* 4. RELATED TOPICS CARD */}
@@ -895,8 +972,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
             <div className="flex items-center gap-1.5 flex-wrap pt-1">
               {[
-                activeDossier.sourceEntity || 'Fact Check',
-                activeDossier.category ? activeDossier.category.toUpperCase() : 'MISINFORMATION',
+                activeDossier?.sourceEntity || 'Fact Check',
+                activeDossier?.category ? activeDossier.category.toUpperCase() : 'CIVIC INTEGRITY',
                 'Government Verification',
                 'Viral Media',
                 'Official Record',
@@ -913,13 +990,266 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
+      {/* Global backdrop for open card dropdown menus */}
+      {openMenuCardId !== null && (
+        <div
+          className="fixed inset-0 z-20 cursor-default"
+          onClick={() => setOpenMenuCardId(null)}
+        />
+      )}
+
       {/* Report Fake News Modal */}
-      {showReportModal && (
+      {showReportModal && activeDossier && (
         <ReportFakeNewsModal
           dossier={activeDossier}
           onClose={() => setShowReportModal(false)}
           currentLang={currentLang}
         />
+      )}
+
+      {/* Edit Investigation Modal */}
+      {editingCardDossier && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl border border-[#e2e8f0] shadow-2xl max-w-lg w-full p-5 sm:p-6 flex flex-col gap-4 animate-in zoom-in-95 duration-150">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-[#f1f5f9]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-[#eff6ff] text-[#2563eb] flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[20px]">edit_note</span>
+                </div>
+                <div>
+                  <h3 className="font-['Plus_Jakarta_Sans'] font-bold text-sm text-[#0f172a]">
+                    Edit Investigation
+                  </h3>
+                  <p className="text-[11px] text-[#64748b]">
+                    Update the claim to re-verify against live web evidence
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                disabled={isSavingEdit}
+                onClick={() => {
+                  setEditingCardDossier(null);
+                  setEditError(null);
+                }}
+                className="w-7 h-7 rounded-lg hover:bg-[#f1f5f9] text-[#64748b] flex items-center justify-center transition-colors cursor-pointer disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined text-[18px]">close</span>
+              </button>
+            </div>
+
+            {/* Existing claim preview */}
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[11px] font-bold text-[#475569] uppercase tracking-wider">
+                Original Claim
+              </span>
+              <div className="p-3 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] text-xs text-[#334155] leading-relaxed select-none">
+                {editingCardDossier.originalClaim || editingCardDossier.title}
+              </div>
+            </div>
+
+            {/* Editable claim input */}
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-bold text-[#0f172a] uppercase tracking-wider">
+                  Modified News Claim / Statement
+                </label>
+                <span className="text-[10px] text-[#94a3b8]">
+                  {editClaimText.length} / 2000
+                </span>
+              </div>
+              <textarea
+                value={editClaimText}
+                onChange={(e) => setEditClaimText(e.target.value)}
+                maxLength={2000}
+                rows={4}
+                disabled={isSavingEdit}
+                placeholder="Enter modified news claim or viral text..."
+                className="w-full bg-[#f8fafc] focus:bg-white rounded-xl border border-[#cbd5e1] focus:border-[#2563eb] p-3 text-xs text-[#0f172a] placeholder:text-[#94a3b8] focus:outline-none focus:ring-2 focus:ring-[#2563eb]/20 resize-none disabled:bg-[#f1f5f9]"
+              />
+            </div>
+
+            {/* Re-verification informative banner */}
+            <div className="p-3 rounded-xl bg-[#eff6ff] border border-[#bfdbfe] flex items-start gap-2.5 text-xs text-[#1e40af]">
+              <span className="material-symbols-outlined text-[18px] flex-shrink-0 mt-0.5 text-[#2563eb]">
+                info
+              </span>
+              <p className="leading-snug text-[11px]">
+                Modifying the claim marks previous conclusions as outdated and immediately runs a full live web search, RAG retrieval, and official evidence verification.
+              </p>
+            </div>
+
+            {/* Error banner */}
+            {editError && (
+              <div className="p-3 rounded-xl bg-[#fef2f2] border border-[#fecaca] flex items-center gap-2 text-xs text-[#b91c1c]">
+                <span className="material-symbols-outlined text-[18px] flex-shrink-0">
+                  error
+                </span>
+                <span className="leading-snug">{editError}</span>
+              </div>
+            )}
+
+            {/* Modal actions */}
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-[#f1f5f9]">
+              <button
+                type="button"
+                disabled={isSavingEdit}
+                onClick={() => {
+                  setEditingCardDossier(null);
+                  setEditError(null);
+                }}
+                className="px-4 py-2 rounded-xl border border-[#e2e8f0] hover:bg-[#f8fafc] text-xs font-semibold text-[#475569] transition-colors cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                disabled={isSavingEdit}
+                onClick={async () => {
+                  const trimmed = editClaimText.trim();
+                  if (!trimmed || trimmed.length < 3) {
+                    setEditError('Please enter a valid news claim of at least 3 characters.');
+                    return;
+                  }
+
+                  setIsSavingEdit(true);
+                  setEditError(null);
+
+                  try {
+                    if (onEditDossier) {
+                      const res = await onEditDossier(editingCardDossier.id, trimmed);
+                      if (res.success) {
+                        setEditingCardDossier(null);
+                        setToastNotification('Investigation updated and re-verified successfully.');
+                        setTimeout(() => setToastNotification(null), 4000);
+                      } else {
+                        setEditError(res.error || 'Re-verification failed. Result needs verification.');
+                      }
+                    } else {
+                      setEditError('Edit verification service is not connected.');
+                    }
+                  } catch (err: any) {
+                    setEditError(err?.message || 'Re-verification failed. Result needs verification.');
+                  } finally {
+                    setIsSavingEdit(false);
+                  }
+                }}
+                className="px-4 py-2 rounded-xl bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs disabled:opacity-75"
+              >
+                {isSavingEdit ? (
+                  <>
+                    <span className="material-symbols-outlined text-[15px] animate-spin">sync</span>
+                    <span>Re-verifying with live evidence...</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-[15px]">check</span>
+                    <span>Save Changes</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Investigation Confirmation Modal */}
+      {deletingCardDossier && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl border border-[#e2e8f0] shadow-2xl max-w-md w-full p-5 sm:p-6 flex flex-col gap-4 animate-in zoom-in-95 duration-150">
+            {/* Header */}
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#fee2e2] text-[#dc2626] flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-[24px]">delete_forever</span>
+              </div>
+              <div>
+                <h3 className="font-['Plus_Jakarta_Sans'] font-bold text-sm text-[#0f172a]">
+                  Delete Investigation
+                </h3>
+                <p className="text-xs font-medium text-[#b91c1c] mt-0.5">
+                  Are you sure you want to delete this investigation?
+                </p>
+              </div>
+            </div>
+
+            {/* Claim details */}
+            <div className="p-3 rounded-xl bg-[#f8fafc] border border-[#e2e8f0] flex flex-col gap-1">
+              <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">
+                Claim
+              </span>
+              <p className="text-xs font-semibold text-[#0f172a] line-clamp-2">
+                {deletingCardDossier.title}
+              </p>
+            </div>
+
+            <p className="text-[11px] text-[#64748b] leading-relaxed">
+              This will permanently remove the investigation and its evidence dossier from the database, history, and trending records. This action cannot be undone.
+            </p>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-[#f1f5f9]">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setDeletingCardDossier(null)}
+                className="px-4 py-2 rounded-xl border border-[#e2e8f0] hover:bg-[#f8fafc] text-xs font-semibold text-[#475569] transition-colors cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={async () => {
+                  setIsDeleting(true);
+                  try {
+                    if (onDeleteDossier) {
+                      await onDeleteDossier(deletingCardDossier.id);
+                    }
+                    setDeletingCardDossier(null);
+                    setToastNotification('Investigation deleted successfully.');
+                    setTimeout(() => setToastNotification(null), 4000);
+                  } catch (err) {
+                    console.error('Failed to delete investigation:', err);
+                  } finally {
+                    setIsDeleting(false);
+                  }
+                }}
+                className="px-4 py-2 rounded-xl bg-[#dc2626] hover:bg-[#b91c1c] text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs disabled:opacity-75"
+              >
+                {isDeleting ? (
+                  <>
+                    <span className="material-symbols-outlined text-[15px] animate-spin">sync</span>
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-[15px]">delete</span>
+                    <span>Delete</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Success Toast Notification */}
+      {toastNotification && (
+        <div className="fixed bottom-6 right-6 z-50 bg-[#0f172a] text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2.5 border border-[#334155] animate-in slide-in-from-bottom duration-200">
+          <span className="material-symbols-outlined text-[#22c55e] text-[20px]">check_circle</span>
+          <span className="text-xs font-semibold">{toastNotification}</span>
+          <button
+            type="button"
+            onClick={() => setToastNotification(null)}
+            className="text-[#94a3b8] hover:text-white transition-colors cursor-pointer ml-1.5"
+          >
+            <span className="material-symbols-outlined text-[16px]">close</span>
+          </button>
+        </div>
       )}
     </div>
   );

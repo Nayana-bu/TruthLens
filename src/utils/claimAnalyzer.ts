@@ -1,4 +1,4 @@
-import {
+import type {
   ClaimDossier,
   SubmissionMode,
   EvidenceSource,
@@ -8,7 +8,7 @@ import {
 import {
   extractClaimsAndEntities,
   buildEvidenceAnalysisAndScoring,
-  SearchResultItem,
+  type SearchResultItem,
 } from './ragEngine.ts';
 
 /**
