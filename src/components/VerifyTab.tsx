@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ClaimDossier, Language, SubmissionMode } from '../types';
 import { INITIAL_DOSSIERS, UI_TRANSLATIONS } from '../data/mockData';
 import { VoiceVerdictPlayer } from './VoiceVerdictPlayer';
@@ -144,6 +144,12 @@ export const VerifyTab: React.FC<VerifyTabProps> = ({
 
   const [playingAudio, setPlayingAudio] = useState<{ id: string; lang: 'kn' | 'hi' | 'en' } | null>(null);
   const [reportingItem, setReportingItem] = useState<ClaimDossier | null>(null);
+
+  useEffect(() => {
+    return () => {
+      stopSpeech();
+    };
+  }, []);
 
   const handleQuickPlayAudio = (e: React.MouseEvent, item: ClaimDossier, lang: 'kn' | 'hi' | 'en') => {
     e.stopPropagation();

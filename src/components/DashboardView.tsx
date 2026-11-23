@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import type { ClaimDossier, Language, SubmissionMode, InvestigationStatistics } from '../types';
 import { speakText, stopSpeech } from '../utils/speechEngine';
 import { ReportFakeNewsModal } from './ReportFakeNewsModal';
@@ -100,6 +100,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }
   };
 
+  useEffect(() => {
+    stopSpeech();
+    setIsSpeaking(false);
+    setActiveSpeechLang(null);
+  }, [activeDossier?.id]);
+
+  useEffect(() => {
+    return () => {
+      stopSpeech();
+    };
+  }, []);
+
   const handlePlayVoice = (lang: Language) => {
     if (!activeDossier) return;
     if (isSpeaking && activeSpeechLang === lang) {
@@ -117,12 +129,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       activeDossier.spokenAudioScript?.[lang] ||
       activeDossier.debunkExplanation?.[lang] ||
       activeDossier.debunkExplanation?.en ||
-      activeDossier.summary?.en;
+      activeDossier.summary?.en ||
+      activeDossier.title;
 
-    speakText(scriptText, lang, () => {
-      setIsSpeaking(false);
-      setActiveSpeechLang(null);
-    });
+    speakText(
+      scriptText,
+      lang,
+      () => {
+        setIsSpeaking(true);
+        setActiveSpeechLang(lang);
+      },
+      () => {
+        setIsSpeaking(false);
+        setActiveSpeechLang(null);
+      },
+      () => {
+        setIsSpeaking(false);
+        setActiveSpeechLang(null);
+      }
+    );
   };
 
   const handleShare = () => {
@@ -527,7 +552,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <span>Listen to explanation:</span>
               </span>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 {/* English */}
                 <button
                   type="button"
@@ -538,8 +563,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       : 'bg-[#eff6ff] hover:bg-[#dbeafe] text-[#2563eb] border-[#bfdbfe]'
                   }`}
                 >
-                  <span className="material-symbols-outlined text-[15px]">volume_up</span>
-                  <span>English</span>
+                  <span className="material-symbols-outlined text-[15px]">
+                    {activeSpeechLang === 'en' && isSpeaking ? 'stop_circle' : 'volume_up'}
+                  </span>
+                  <span>
+                    {activeSpeechLang === 'en' && isSpeaking ? 'Stop English' : 'English'}
+                  </span>
                 </button>
 
                 {/* Kannada */}
@@ -552,8 +581,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       : 'bg-[#fef2f2] hover:bg-[#fee2e2] text-[#dc2626] border-[#fecaca]'
                   }`}
                 >
-                  <span className="material-symbols-outlined text-[15px]">volume_up</span>
-                  <span>ಕನ್ನಡ</span>
+                  <span className="material-symbols-outlined text-[15px]">
+                    {activeSpeechLang === 'kn' && isSpeaking ? 'stop_circle' : 'volume_up'}
+                  </span>
+                  <span>
+                    {activeSpeechLang === 'kn' && isSpeaking ? 'ನಿಲ್ಲಿಸಿ (Stop)' : 'ಕನ್ನಡ'}
+                  </span>
                 </button>
 
                 {/* Hindi */}
@@ -566,8 +599,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       : 'bg-[#fef2f2] hover:bg-[#fee2e2] text-[#dc2626] border-[#fecaca]'
                   }`}
                 >
-                  <span className="material-symbols-outlined text-[15px]">volume_up</span>
-                  <span>हिंदी</span>
+                  <span className="material-symbols-outlined text-[15px]">
+                    {activeSpeechLang === 'hi' && isSpeaking ? 'stop_circle' : 'volume_up'}
+                  </span>
+                  <span>
+                    {activeSpeechLang === 'hi' && isSpeaking ? 'रोकें (Stop)' : 'हिंदी'}
+                  </span>
                 </button>
               </div>
             </div>

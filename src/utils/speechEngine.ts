@@ -13,6 +13,8 @@ const activeUtterancesSet = new Set<SpeechSynthesisUtterance>();
 let keepAliveTimer: number | null = null;
 let isExplicitlyStopped = false;
 let currentLanguage: 'kn' | 'hi' | 'en' | null = null;
+let playbackSessionId = 0;
+let activeFetchController: AbortController | null = null;
 
 /**
  * Splits text into natural sentence-level chunks using Indian & Latin punctuation.
@@ -115,18 +117,29 @@ function pickLanguageVoice(lang: 'kn' | 'hi' | 'en'): SpeechSynthesisVoice | nul
 function fallbackBrowserSpeech(
   text: string,
   lang: 'kn' | 'hi' | 'en',
+  sessionId: number,
   onStart?: () => void,
   onEnd?: () => void,
   onError?: (err: any) => void
 ): void {
+  if (isExplicitlyStopped || sessionId !== playbackSessionId) {
+    return;
+  }
+
   if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-    onEnd?.();
+    if (sessionId === playbackSessionId && !isExplicitlyStopped) {
+      currentLanguage = null;
+      onEnd?.();
+    }
     return;
   }
 
   const sentences = splitIntoNaturalSentences(text);
   if (sentences.length === 0) {
-    onEnd?.();
+    if (sessionId === playbackSessionId && !isExplicitlyStopped) {
+      currentLanguage = null;
+      onEnd?.();
+    }
     return;
   }
 
@@ -136,6 +149,13 @@ function fallbackBrowserSpeech(
     window.clearInterval(keepAliveTimer);
   }
   keepAliveTimer = window.setInterval(() => {
+    if (isExplicitlyStopped || sessionId !== playbackSessionId) {
+      if (keepAliveTimer !== null) {
+        window.clearInterval(keepAliveTimer);
+        keepAliveTimer = null;
+      }
+      return;
+    }
     if (
       typeof window !== 'undefined' &&
       'speechSynthesis' in window &&
@@ -151,7 +171,7 @@ function fallbackBrowserSpeech(
   let hasTriggeredStart = false;
 
   const playNextSentence = () => {
-    if (isExplicitlyStopped) {
+    if (isExplicitlyStopped || sessionId !== playbackSessionId) {
       activeUtterancesSet.clear();
       return;
     }
@@ -189,6 +209,7 @@ function fallbackBrowserSpeech(
     activeUtterancesSet.add(utterance);
 
     utterance.onstart = () => {
+      if (isExplicitlyStopped || sessionId !== playbackSessionId) return;
       if (!hasTriggeredStart) {
         hasTriggeredStart = true;
         onStart?.();
@@ -197,7 +218,7 @@ function fallbackBrowserSpeech(
 
     utterance.onend = () => {
       activeUtterancesSet.delete(utterance);
-      if (!isExplicitlyStopped) {
+      if (!isExplicitlyStopped && sessionId === playbackSessionId) {
         sentenceIdx++;
         playNextSentence();
       }
@@ -205,7 +226,21 @@ function fallbackBrowserSpeech(
 
     utterance.onerror = (e) => {
       activeUtterancesSet.delete(utterance);
-      if (isExplicitlyStopped || e.error === 'interrupted' || e.error === 'canceled') {
+      if (
+        isExplicitlyStopped ||
+        sessionId !== playbackSessionId ||
+        e.error === 'interrupted' ||
+        e.error === 'canceled'
+      ) {
+        return;
+      }
+      if (e.error === 'not-allowed' || e.error === 'synthesis-unavailable') {
+        if (keepAliveTimer !== null) {
+          window.clearInterval(keepAliveTimer);
+          keepAliveTimer = null;
+        }
+        currentLanguage = null;
+        onError?.(e);
         return;
       }
       sentenceIdx++;
@@ -233,6 +268,7 @@ export async function speakText(
 ): Promise<void> {
   // Halt any previous playback immediately
   stopSpeech();
+  const sessionId = ++playbackSessionId;
   isExplicitlyStopped = false;
   currentLanguage = lang;
 
@@ -242,6 +278,7 @@ export async function speakText(
     .trim();
 
   if (!cleanText) {
+    currentLanguage = null;
     onEnd?.();
     return;
   }
@@ -251,7 +288,8 @@ export async function speakText(
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3500);
+    activeFetchController = controller;
+    const timeoutId = window.setTimeout(() => controller.abort(), 3500);
 
     const response = await fetch('/api/tts', {
       method: 'POST',
@@ -260,12 +298,17 @@ export async function speakText(
       signal: controller.signal,
     });
 
-    clearTimeout(timeoutId);
+    window.clearTimeout(timeoutId);
+    if (activeFetchController === controller) {
+      activeFetchController = null;
+    }
 
-    if (isExplicitlyStopped) return;
+    if (isExplicitlyStopped || sessionId !== playbackSessionId) return;
 
     if (response.ok) {
       const data = await response.json();
+      if (isExplicitlyStopped || sessionId !== playbackSessionId) return;
+
       if (data.success && data.audioBase64) {
         const audio = new Audio(`data:audio/mp3;base64,${data.audioBase64}`);
         currentAudio = audio;
@@ -275,28 +318,40 @@ export async function speakText(
             currentAudio = null;
             currentLanguage = null;
           }
-          onEnd?.();
+          if (!isExplicitlyStopped && sessionId === playbackSessionId) {
+            onEnd?.();
+          }
         };
 
         audio.onerror = () => {
           if (currentAudio === audio) {
             currentAudio = null;
           }
-          if (!isExplicitlyStopped) {
-            fallbackBrowserSpeech(cleanText, lang, undefined, onEnd, onError);
+          if (!isExplicitlyStopped && sessionId === playbackSessionId) {
+            fallbackBrowserSpeech(cleanText, lang, sessionId, undefined, onEnd, onError);
           }
         };
 
         await audio.play();
+        // Guard in case Stop was clicked while audio.play() was resolving
+        if (isExplicitlyStopped || sessionId !== playbackSessionId) {
+          audio.onended = null;
+          audio.onerror = null;
+          audio.pause();
+          audio.currentTime = 0;
+          if (currentAudio === audio) {
+            currentAudio = null;
+          }
+        }
         return;
       }
     }
   } catch {
-    // Network or timeout: switch gracefully to browser engine
+    // Network, abort, or timeout: if not stopped, switch gracefully to browser engine
   }
 
-  if (!isExplicitlyStopped) {
-    fallbackBrowserSpeech(cleanText, lang, undefined, onEnd, onError);
+  if (!isExplicitlyStopped && sessionId === playbackSessionId) {
+    fallbackBrowserSpeech(cleanText, lang, sessionId, undefined, onEnd, onError);
   }
 }
 
@@ -304,13 +359,26 @@ export async function speakText(
  * Halts any active audio or speech immediately.
  */
 export function stopSpeech(): void {
+  playbackSessionId++;
   isExplicitlyStopped = true;
   currentLanguage = null;
 
+  if (activeFetchController) {
+    try {
+      activeFetchController.abort();
+    } catch {
+      // ignore
+    }
+    activeFetchController = null;
+  }
+
   if (currentAudio) {
     try {
+      currentAudio.onended = null;
+      currentAudio.onerror = null;
       currentAudio.pause();
       currentAudio.currentTime = 0;
+      currentAudio.src = '';
     } catch {
       // ignore
     }
@@ -331,4 +399,8 @@ export function stopSpeech(): void {
   }
 
   activeUtterancesSet.clear();
+}
+
+export function getActiveSpeechLanguage(): 'kn' | 'hi' | 'en' | null {
+  return isExplicitlyStopped ? null : currentLanguage;
 }

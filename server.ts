@@ -1,6 +1,6 @@
 import express from 'express';
 import type { Request, Response } from 'express';
-import { GoogleGenAI, Type } from '@google/genai';
+import { GoogleGenAI, Type, ThinkingLevel } from '@google/genai';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -191,10 +191,14 @@ app.post('/api/investigate', async (req: Request, res: Response) => {
     // Step 4: If Gemini AI is configured, execute Search-Grounded Reasoning with RAG Context
     if (ai) {
       try {
-        console.log(`[TRUTHLENS-ENGINE] Calling Gemini 3.8 Flash with Live RAG Context & Google Search Grounding...`);
-        const timeoutPromise = new Promise<null>((_, reject) =>
-          setTimeout(() => reject(new Error('AI timeout after 16s')), 16000)
-        );
+        console.log(`[TRUTHLENS-ENGINE] Calling Gemini 4 Hydrogen with Live RAG Context & Google Search Grounding...`);
+        let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+        const timeoutPromise = new Promise<null>((resolve) => {
+          timeoutHandle = setTimeout(() => {
+            console.log(`[TRUTHLENS-ENGINE] Gemini grounding request exceeded 25s; using retrieved RAG forensic dossier.`);
+            resolve(null);
+          }, 25000);
+        });
 
         // Format RAG evidence context using aggregated search results
         const ragEvidenceContextText = aggregateEvidenceContext(
@@ -285,21 +289,26 @@ Return ONLY a valid JSON object in a \`\`\`json ... \`\`\` code fence with the f
           let geminiRes: any = null;
           try {
             geminiRes = await ai.models.generateContent({
-              model: 'gemini-3.8-flash',
+              model: 'gemini-4-hydrogen',
               contents: { parts: contents },
               config: {
                 tools: [{ googleSearch: {} }],
+                thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
               },
             });
           } catch (modelErr: any) {
-            console.log(`[TRUTHLENS-ENGINE] gemini-3.8-flash attempt note: ${modelErr?.message || modelErr}`);
+            const msg = modelErr?.message || String(modelErr);
+            console.log(`[TRUTHLENS-ENGINE] gemini-4-hydrogen fallback triggered: ${msg.slice(0, 180)}`);
             try {
               geminiRes = await ai.models.generateContent({
                 model: 'gemini-3.1-flash-lite',
                 contents: { parts: contents },
+                config: {
+                  thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
+                },
               });
             } catch (fallbackErr: any) {
-              console.log(`[TRUTHLENS-ENGINE] Gemini model call failed: ${fallbackErr?.message || fallbackErr}`);
+              console.log(`[TRUTHLENS-ENGINE] Gemini fallback unavailable; continuing with live RAG dossier.`);
               return null;
             }
           }
@@ -351,6 +360,7 @@ Return ONLY a valid JSON object in a \`\`\`json ... \`\`\` code fence with the f
         })();
 
         const result = (await Promise.race([aiCall, timeoutPromise])) as any;
+        if (timeoutHandle) clearTimeout(timeoutHandle);
 
         if (result && result.parsed && (result.parsed.verdict || result.parsed.title)) {
           const { parsed, searchSources, webSearchQueries } = result;
@@ -644,9 +654,13 @@ app.put('/api/investigations/:id', async (req: Request, res: Response) => {
     // Step 4: Search-Grounded Gemini reasoning if available
     if (ai) {
       try {
-        const timeoutPromise = new Promise<null>((_, reject) =>
-          setTimeout(() => reject(new Error('AI timeout after 16s')), 16000)
-        );
+        let editTimeoutHandle: ReturnType<typeof setTimeout> | null = null;
+        const timeoutPromise = new Promise<null>((resolve) => {
+          editTimeoutHandle = setTimeout(() => {
+            console.log(`[TRUTHLENS-ENGINE] Gemini re-verification request exceeded 25s; using retrieved RAG forensic dossier.`);
+            resolve(null);
+          }, 25000);
+        });
 
         const ragEvidenceContextText = aggregateEvidenceContext(
           searchOutput.results,
@@ -723,17 +737,23 @@ Return ONLY a valid JSON object in a \`\`\`json ... \`\`\` code fence with the f
           let geminiRes: any = null;
           try {
             geminiRes = await ai.models.generateContent({
-              model: 'gemini-3.8-flash',
+              model: 'gemini-4-hydrogen',
               contents: promptText,
               config: {
                 tools: [{ googleSearch: {} }],
+                thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
               },
             });
           } catch (modelErr: any) {
+            const msg = modelErr?.message || String(modelErr);
+            console.log(`[TRUTHLENS-ENGINE] gemini-4-hydrogen re-verification fallback triggered: ${msg.slice(0, 180)}`);
             try {
               geminiRes = await ai.models.generateContent({
                 model: 'gemini-3.1-flash-lite',
                 contents: promptText,
+                config: {
+                  thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
+                },
               });
             } catch {
               return null;
@@ -784,6 +804,7 @@ Return ONLY a valid JSON object in a \`\`\`json ... \`\`\` code fence with the f
         })();
 
         const result = (await Promise.race([aiCall, timeoutPromise])) as any;
+        if (editTimeoutHandle) clearTimeout(editTimeoutHandle);
         if (result && result.parsed && (result.parsed.verdict || result.parsed.title)) {
           const { parsed, searchSources, webSearchQueries } = result;
           const combinedSources: EvidenceSource[] = [

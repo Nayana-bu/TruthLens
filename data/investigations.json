@@ -1,1 +1,200 @@
-[]
+[
+  {
+    "id": "user-dossier-1795438217918",
+    "originalInput": "Narendra modi is a prime minister of India",
+    "extractedText": "[object Object]",
+    "inputType": "text",
+    "verdict": "verified_true",
+    "clearVerdictStatus": "REAL",
+    "verdictLabel": "Verified True • Official Record",
+    "confidenceScore": 89,
+    "evidenceStrength": "Moderate",
+    "language": "en",
+    "status": "completed",
+    "createdAt": "2026-11-23T12:50:33.920Z",
+    "updatedAt": "2026-11-23T12:50:33.920Z",
+    "dossier": {
+      "id": "user-dossier-1795438217918",
+      "title": "Narendra modi is a prime minister of India",
+      "originalClaim": "Narendra modi is a prime minister of India",
+      "verdict": "verified_true",
+      "verdictLabel": "Verified True • Official Record",
+      "verdictSubtitle": "Primary gazette dispatches and official press releases confirm this information.",
+      "confidenceScore": 89,
+      "timeAgo": "Just verified",
+      "category": "governance",
+      "sourceEntity": "Press Information Bureau (PIB Fact Check Desk)",
+      "languages": [
+        "en",
+        "kn",
+        "hi"
+      ],
+      "clearVerdictStatus": "REAL",
+      "spokenAudioScript": {
+        "en": "Confirmed Real! The claim regarding \"Narendra modi is a prime minister of India\" has been verified through official gazette repositories and official agency press releases.",
+        "kn": "ಅಧಿಕೃತ ದೃಢೀಕರಣ! 'Narendra modi is a prime minister of India' ಕುರಿತ ಈ ಮಾಹಿತಿ ನೈಜವಾಗಿದ್ದು, ಸರ್ಕಾರಿ ದಾಖಲೆಗಳು ಮತ್ತು ಅಧಿಕೃತ ಪ್ರಕಟಣೆಯೊಂದಿಗೆ ತಾಳೆಯಾಗಿದೆ. ಇದು ಸತ್ಯವಾದ ಅಧಿಕೃತ ಸುದ್ದಿಯಾಗಿದೆ.",
+        "hi": "सत्यापित सूचना! 'Narendra modi is a prime minister of India' से संबंधित यह खबर पूरी तरह सच है और आधिकारिक रिकॉर्ड व सरकारी विज्ञप्ति द्वारा प्रमाणित है।"
+      },
+      "summary": {
+        "en": "Corroborated by primary agency press releases and official gazette dispatches. The core factual assertions in this claim are accurate.",
+        "kn": "ಅಧಿಕೃತ ಸರ್ಕಾರಿ ಪ್ರಕಟಣೆ ಮತ್ತು ದಾಖಲೆಗಳೊಂದಿಗೆ ಈ ಮಾಹಿತಿ ತಾಳೆಯಾಗಿದ್ದು, ಸುದ್ದಿ ಸತ್ಯವೆಂದು ದೃಢಪಟ್ಟಿದೆ.",
+        "hi": "सरकारी विज्ञप्ति और आधिकारिक रिकॉर्ड द्वारा पुष्टि की गई है कि यह खबर सत्य है।"
+      },
+      "debunkExplanation": {
+        "en": "Verification confirms that \"Narendra modi is a prime minister of India\" is supported by authoritative primary records. Relevant governing bodies and newsrooms have documented and confirmed this development.",
+        "kn": "'Narendra modi is a prime minister of India' ಕುರಿತಾದ ಮಾಹಿತಿಯನ್ನು ಸಂಬಂಧಪಟ್ಟ ಅಧಿಕೃತ ಇಲಾಖೆ ಮತ್ತು ಗೆಜೆಟ್ ದಾಖಲೆಗಳು ಖಚಿತಪಡಿಸಿವೆ. ಇದು ಪ್ರಾಥಮಿಕ ಮೂಲಗಳಿಂದ ದೃಢಪಟ್ಟ ಸತ್ಯ ಸುದ್ದಿಯಾಗಿದೆ.",
+        "hi": "'Narendra modi is a prime minister of India' का विवरण आधिकारिक रिकॉर्ड और सरकारी प्रेस विज्ञप्ति द्वारा प्रमाणित है। यह दावा सत्य और प्रामाणिक पाया गया है।"
+      },
+      "whatsappDebunkNote": {
+        "en": "✅ *TRUTHLENS FACT CHECK VERIFIED* ✅\n\n*VERDICT: VERIFIED TRUE / ಸತ್ಯ / सत्य*\n\n*Topic:* Narendra modi is a prime minister of India\n*Status:* Backed by primary government announcements and official records.\n\n_Ref: TruthLens Civic Verification Unit_",
+        "kn": "✅ *ಟ್ರೂತ್‌ಲೆನ್ಸ್ ಫ್ಯಾಕ್ಟ್ ಚೆಕ್* ✅\n\n*ತೀರ್ಪು: ಅಧಿಕೃತ ಸತ್ಯ ಸುದ್ದಿ*\n\n*ವಿಷಯ:* Narendra modi is a prime minister of India\n*ಸ್ಥಿತಿ:* ಅಧಿಕೃತ ದಾಖಲೆಗಳಿಂದ ದೃಢಪಟ್ಟಿದೆ.\n\n_ಪರಿಶೀಲನೆ: ಟ್ರೂತ್‌ಲೆನ್ಸ್_",
+        "hi": "✅ *ट्रूथलेन्स फैक्ट चेक* ✅\n\n*निष्कर्ष: सत्यापित सत्य*\n\n*विषय:* Narendra modi is a prime minister of India\n*स्थिति:* आधिकारिक रिकॉर्ड द्वारा प्रमाणित।\n\n_सत्यापन: ट्रूथलेन्स_"
+      },
+      "sources": [
+        {
+          "name": "Press Information Bureau (PIB Fact Check Desk)",
+          "category": "Primary Official Desk",
+          "status": "confirmed",
+          "details": "Matched against official dispatch registry and confirmed agency records.",
+          "url": "https://www.google.com/search?q=Press%20Information%20Bureau%20(PIB%20Fact%20Check%20Desk)%20official%20notices",
+          "timestamp": "Live Gazette Sync",
+          "publicationDate": "Official Active Gazette",
+          "isPrimary": true,
+          "credibilityTier": "official_primary"
+        },
+        {
+          "name": "PIB Fact Check & Civic Archive",
+          "category": "Fact-Checking Bureau",
+          "status": "confirmed",
+          "details": "Official government dispatches corroborate this announcement.",
+          "url": "https://factcheck.pib.gov.in/",
+          "timestamp": "PIB Registry Sweep",
+          "publicationDate": "National Fact-Check Archive",
+          "isPrimary": true,
+          "credibilityTier": "factcheck_org"
+        },
+        {
+          "name": "Google Search Fact-Check Index",
+          "category": "Live Web Grounding",
+          "status": "confirmed",
+          "details": "Live web index sweep executed for \"Narendra modi is a prime minister of India\".",
+          "url": "https://www.google.com/search?q=Narendra%20modi%20is%20a%20prime%20minister%20of%20India%20fact%20check",
+          "timestamp": "Live Index",
+          "publicationDate": "Current Search Index",
+          "isPrimary": false,
+          "credibilityTier": "accredited_press"
+        }
+      ],
+      "redFlags": [],
+      "timeline": [
+        {
+          "time": "T-00:45",
+          "event": "Claim ingested and factual assertions isolated",
+          "source": "Citizen Intake"
+        },
+        {
+          "time": "T-00:20",
+          "event": "Corroboration sweep across Press Information Bureau (PIB Fact Check Desk) and public archives",
+          "source": "Archive Scraper"
+        },
+        {
+          "time": "Just now",
+          "event": "Evidence consensus reached: REAL",
+          "source": "Verification Engine"
+        }
+      ],
+      "originVector": "User Entered News / Claim Forward",
+      "officialRefId": "TL-REAL-55961",
+      "groundingInfo": {
+        "isGrounded": true,
+        "queries": [
+          "Narendra modi is a prime minister of India fact check",
+          "Narendra modi is a prime minister of India official verification announcement",
+          "Press Information Bureau (PIB Fact Check Desk) official records"
+        ],
+        "sources": [
+          {
+            "title": "Press Information Bureau (PIB Fact Check Desk)",
+            "uri": "https://www.google.com/search?q=Press%20Information%20Bureau%20(PIB%20Fact%20Check%20Desk)%20official%20notices"
+          },
+          {
+            "title": "PIB Fact Check & Civic Archive",
+            "uri": "https://factcheck.pib.gov.in/"
+          },
+          {
+            "title": "Google Search Fact-Check Index",
+            "uri": "https://www.google.com/search?q=Narendra%20modi%20is%20a%20prime%20minister%20of%20India%20fact%20check"
+          }
+        ]
+      },
+      "extractedClaims": [
+        {
+          "id": "claim-fact-1",
+          "claim": "Narendra modi is a prime minister of India",
+          "entities": [
+            "India",
+            "Narendra modi"
+          ],
+          "dates": [],
+          "locations": [
+            "India"
+          ],
+          "organizations": [],
+          "amounts": [],
+          "verdict": "verified_true",
+          "clearVerdictStatus": "REAL",
+          "statusLabel": "Corroborated"
+        }
+      ],
+      "extractedEntities": {
+        "dates": [],
+        "locations": [
+          "India"
+        ],
+        "organizations": [],
+        "amounts": [],
+        "people": [
+          "Narendra modi"
+        ]
+      },
+      "evidenceAnalysis": {
+        "evidenceStrength": "high_corroboration",
+        "evidenceStrengthLabel": "High Evidence Corroboration",
+        "criteriaScore": 89,
+        "supportingEvidence": [
+          {
+            "point": "Matched against official dispatch registry and confirmed agency records.",
+            "sourceName": "Press Information Bureau (PIB Fact Check Desk)",
+            "url": "https://www.google.com/search?q=Press%20Information%20Bureau%20(PIB%20Fact%20Check%20Desk)%20official%20notices",
+            "date": "Official Active Gazette",
+            "quoteOrExcerpt": "Matched against official dispatch registry and confirmed agency records.",
+            "isPrimarySource": true
+          },
+          {
+            "point": "Official government dispatches corroborate this announcement.",
+            "sourceName": "PIB Fact Check & Civic Archive",
+            "url": "https://factcheck.pib.gov.in/",
+            "date": "National Fact-Check Archive",
+            "quoteOrExcerpt": "Official government dispatches corroborate this announcement.",
+            "isPrimarySource": true
+          },
+          {
+            "point": "Live web index sweep executed for \"Narendra modi is a prime minister of India\".",
+            "sourceName": "Google Search Fact-Check Index",
+            "url": "https://www.google.com/search?q=Narendra%20modi%20is%20a%20prime%20minister%20of%20India%20fact%20check",
+            "date": "Current Search Index",
+            "quoteOrExcerpt": "Live web index sweep executed for \"Narendra modi is a prime minister of India\".",
+            "isPrimarySource": false
+          }
+        ],
+        "contradictingEvidence": [],
+        "limitationsAndUnresolved": [
+          "Continuous indexing active; subsequent gazette updates will be incorporated automatically."
+        ],
+        "searchProviderStatus": "operational",
+        "searchQueryCount": 2,
+        "deduplicatedCount": 0
+      }
+    }
+  }
+]
