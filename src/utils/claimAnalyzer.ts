@@ -8,7 +8,9 @@ import type {
 import {
   extractClaimsAndEntities,
   buildEvidenceAnalysisAndScoring,
+  evaluateEvidenceForVerdict,
   type SearchResultItem,
+  type EvidenceEvaluationResult,
 } from './ragEngine.ts';
 
 /**
@@ -23,16 +25,30 @@ export function analyzeClaimText(
   claimText: string,
   mode: SubmissionMode = 'text',
   imageName?: string,
-  externalSources?: EvidenceSource[]
+  externalSources?: EvidenceSource[],
+  searchResults?: SearchResultItem[]
 ): ClaimDossier {
   const rawText = (claimText || '').trim();
-  const textLower = rawText.toLowerCase();
 
-  // Step 1: Input processing & RAG Entity / Sub-Claim Isolation
-  const { cleanedInput, extractedClaims, extractedEntities, isOcrFailureOrEmpty } =
-    extractClaimsAndEntities(rawText, mode, imageName);
+  // Step 1: Intelligent Query Preprocessing, Spell/Grammar Normalization & Entity Isolation
+  const {
+    cleanedInput,
+    normalizedQuery,
+    alternativeQueries,
+    extractedClaims,
+    extractedEntities,
+    isOcrFailureOrEmpty,
+    preprocessed,
+  } = extractClaimsAndEntities(rawText, mode, imageName);
 
-  // Extract clean title / headline from user input
+  // Use normalized + cross-lingual expanded text for domain & semantic rule evaluation
+  // while strictly preserving rawText as originalClaim.
+  const crossLingualTokens = alternativeQueries
+    .filter((q) => /^[A-Za-z0-9\s.,'-]+$/.test(q))
+    .join(' ');
+  const textLower = `${normalizedQuery} ${crossLingualTokens} ${rawText}`.toLowerCase();
+
+  // Extract clean title / headline from normalized input
   let cleanedTitle = cleanedInput;
   if (cleanedTitle.length > 75) {
     const cut = cleanedTitle.slice(0, 72);
@@ -216,19 +232,32 @@ export function analyzeClaimText(
   const isModiCurrentPM =
     (textLower.includes('narendra modi') || textLower.includes('modi')) &&
     (textLower.includes('prime minister') || textLower.includes('pm of india') || textLower.includes('is pm')) &&
+    !preprocessed.hasNegation &&
     !textLower.includes('not a prime') &&
     !textLower.includes('not the prime') &&
     !textLower.includes('resigned') &&
     !textLower.includes('no longer');
 
   const isDroupadiMurmuPresident =
-    textLower.includes('droupadi murmu') && textLower.includes('president');
+    textLower.includes('droupadi murmu') &&
+    textLower.includes('president') &&
+    !preprocessed.hasNegation;
 
   const isSiddaramaiahCM =
-    textLower.includes('siddaramaiah') && (textLower.includes('chief minister') || textLower.includes('cm'));
+    textLower.includes('siddaramaiah') &&
+    (textLower.includes('chief minister') || textLower.includes('cm')) &&
+    !preprocessed.hasNegation;
+
+  const claimYearsInText: string[] = textLower.match(/\b(19\d{2}|20[0-3]\d)\b/g) || [];
+  const hasWrongChandrayaanYear =
+    (textLower.includes('chandrayaan-3') || textLower.includes('chandrayaan 3')) &&
+    claimYearsInText.length > 0 &&
+    !claimYearsInText.includes('2023');
 
   const isOfficialSpaceTrue =
     isSpace &&
+    !preprocessed.hasNegation &&
+    !hasWrongChandrayaanYear &&
     (textLower.includes('aditya-l1') ||
       textLower.includes('aditya l1') ||
       textLower.includes('chandrayaan-3') ||
@@ -259,9 +288,18 @@ export function analyzeClaimText(
   // Explicit False patterns (Documented fabrications & active scams)
   const isModiNotPMFalse =
     (textLower.includes('narendra modi') || textLower.includes('modi')) &&
-    (textLower.includes('not a prime minister') ||
+    (textLower.includes('prime minister') || textLower.includes('pm of india') || textLower.includes('is pm')) &&
+    (preprocessed.hasNegation ||
+      textLower.includes('not a prime minister') ||
       textLower.includes('not the prime minister') ||
-      textLower.includes('is not prime minister'));
+      textLower.includes('is not prime minister') ||
+      textLower.includes('not prime minister') ||
+      textLower.includes('resigned'));
+
+  const isMurmuNotPresidentFalse =
+    textLower.includes('droupadi murmu') &&
+    textLower.includes('president') &&
+    preprocessed.hasNegation;
 
   const isStarNoteInvalidFalse =
     textLower.includes('star') &&
@@ -296,16 +334,48 @@ export function analyzeClaimText(
     textLower.includes('[search_failure_simulated]') ||
     (externalSources && externalSources.length === 1 && externalSources[0].name.includes('Search Service Disruption'));
 
+  // Step 2b: Evaluate live retrieved RAG evidence (when searchResults or externalSources exist)
+  const effectiveSearchItems: SearchResultItem[] = searchResults && searchResults.length > 0
+    ? searchResults
+    : (externalSources || []).map((s) => ({
+        title: s.name,
+        url: s.url || '',
+        snippet: s.details,
+        publicationDate: s.publicationDate,
+        sourceName: s.name,
+        category: s.category,
+        isPrimary: Boolean(s.isPrimary),
+        credibilityTier: s.credibilityTier || 'secondary_web',
+        relevanceScore: 0.55,
+        stance:
+          s.status === 'refuted' || s.status === 'contradicted'
+            ? 'contradicts'
+            : s.status === 'confirmed'
+            ? 'supports'
+            : 'contextual',
+      }));
+
+  const evidenceEval: EvidenceEvaluationResult | null =
+    effectiveSearchItems.length > 0 && !isSearchApiFailure
+      ? evaluateEvidenceForVerdict(preprocessed, effectiveSearchItems, 'operational')
+      : null;
+
   // Determine Verdict and Clear Status
   let verdict: VerdictType = 'unverified';
   let clearVerdictStatus: ClearVerdictStatus = 'UNVERIFIED';
 
+  const hasLiveEvidenceDecision = Boolean(searchResults && searchResults.length > 0 && evidenceEval && evidenceEval.recommendedVerdict);
+
   if (isSearchApiFailure) {
     verdict = 'unverified';
     clearVerdictStatus = 'UNVERIFIED';
-  } else if (hasPhishingSignals || isModiNotPMFalse || isStarNoteInvalidFalse || isBankClosureRumor || isFlatEarthFalse) {
+  } else if (hasPhishingSignals || isModiNotPMFalse || isMurmuNotPresidentFalse || isStarNoteInvalidFalse || isBankClosureRumor || isFlatEarthFalse) {
     verdict = 'false';
     clearVerdictStatus = 'FAKE';
+  } else if (hasLiveEvidenceDecision && (evidenceEval!.recommendedVerdict === 'false' || evidenceEval!.recommendedVerdict === 'partly_true')) {
+    // Retrieved live evidence actively contradicts or finds conflict — never let generic shortcuts override it
+    verdict = evidenceEval!.recommendedVerdict!;
+    clearVerdictStatus = verdict === 'false' ? 'FAKE' : 'PARTLY_TRUE';
   } else if (isModiCurrentPM || isDroupadiMurmuPresident || isSiddaramaiahCM || isOfficialSpaceTrue || isStarNoteLegal || isKnownSportsTrue || isKnownGeographicTrue || isRecentCycloneArnab) {
     verdict = 'verified_true';
     clearVerdictStatus = 'REAL';
@@ -321,6 +391,15 @@ export function analyzeClaimText(
   } else if (textLower.includes('context missing') || textLower.includes('missing context')) {
     verdict = 'context_missing';
     clearVerdictStatus = 'CONTEXT_MISSING';
+  } else if (evidenceEval && evidenceEval.recommendedVerdict) {
+    // Ground verdict in retrieved RAG evidence instead of returning false UNVERIFIED!
+    verdict = evidenceEval.recommendedVerdict;
+    if (verdict === 'verified_true') clearVerdictStatus = 'REAL';
+    else if (verdict === 'false') clearVerdictStatus = 'FAKE';
+    else if (verdict === 'partly_true') clearVerdictStatus = 'PARTLY_TRUE';
+    else if (verdict === 'misleading') clearVerdictStatus = 'MISLEADING';
+    else if (verdict === 'context_missing') clearVerdictStatus = 'CONTEXT_MISSING';
+    else clearVerdictStatus = 'UNVERIFIED';
   } else {
     // UNVERIFIED: No authoritative corroboration or disproof found online yet
     // RULE: Absence of evidence is NOT evidence of falsity!
@@ -328,7 +407,7 @@ export function analyzeClaimText(
     clearVerdictStatus = 'UNVERIFIED';
   }
 
-  // Multilingual synthesis based on the exact verdict
+  // Multilingual synthesis based on the exact verdict + live retrieved evidence excerpt
   const topicLabelEn = cleanedTitle.replace(/^(Claim:\s*|Viral\s*)/i, '');
   const { summary, debunkExplanation, spokenAudioScript, whatsappDebunkNote, redFlags } =
     generateMultilingualDossierContent({
@@ -339,6 +418,8 @@ export function analyzeClaimText(
       sourceEntity,
       hasPhishingSignals,
       hasUrgencySensationalism,
+      bestAnswerExcerpt: evidenceEval?.bestAnswerExcerpt,
+      reasoningNote: evidenceEval?.reasoningNote,
     });
 
   // Sources tailored to the verdict and topic with publication dates and credibility tiers
@@ -429,7 +510,17 @@ export function analyzeClaimText(
       },
     ];
   } else if (externalSources && externalSources.length > 0) {
-    sources = externalSources;
+    sources = externalSources.map((src, idx) => {
+      const matchedSearch = searchResults?.[idx] || effectiveSearchItems[idx];
+      let resolvedStatus = src.status;
+      if (matchedSearch?.stance === 'contradicts') resolvedStatus = 'contradicted';
+      else if (matchedSearch?.stance === 'supports') resolvedStatus = 'confirmed';
+      else if (verdict === 'unverified') resolvedStatus = 'unverified';
+      return {
+        ...src,
+        status: resolvedStatus,
+      };
+    });
   } else {
     sources = [
       {
@@ -502,6 +593,18 @@ export function analyzeClaimText(
       sub.verdict = 'false';
       sub.clearVerdictStatus = 'FAKE';
       sub.statusLabel = 'Refuted';
+    } else if (verdict === 'partly_true') {
+      sub.verdict = 'partly_true';
+      sub.clearVerdictStatus = 'PARTLY_TRUE';
+      sub.statusLabel = 'Partly True / Mixed';
+    } else if (verdict === 'misleading') {
+      sub.verdict = 'misleading';
+      sub.clearVerdictStatus = 'MISLEADING';
+      sub.statusLabel = 'Misleading / Out of Context';
+    } else if (verdict === 'context_missing') {
+      sub.verdict = 'context_missing';
+      sub.clearVerdictStatus = 'CONTEXT_MISSING';
+      sub.statusLabel = 'Context Missing';
     } else {
       sub.verdict = 'unverified';
       sub.clearVerdictStatus = 'UNVERIFIED';
@@ -515,7 +618,7 @@ export function analyzeClaimText(
     cleanedTitle,
     verdict,
     sources,
-    [],
+    effectiveSearchItems,
     searchStatus,
     extractedClaims.length + 1,
     0
@@ -569,11 +672,11 @@ export function analyzeClaimText(
     officialRefId: `TL-${clearVerdictStatus}-${Math.floor(10000 + Math.random() * 90000)}`,
     groundingInfo: {
       isGrounded: true,
-      queries: [
+      queries: Array.from(new Set([
+        normalizedQuery,
+        ...alternativeQueries,
         `${cleanedTitle} fact check`,
-        `${cleanedTitle} official verification announcement`,
-        `${sourceEntity} official records`,
-      ],
+      ])).slice(0, 5),
       sources: sources.map((s) => ({ title: s.name, uri: s.url || googleSearchUrl })),
     },
     extractedClaims,
@@ -698,6 +801,8 @@ function generateMultilingualDossierContent(params: {
   sourceEntity: string;
   hasPhishingSignals: boolean;
   hasUrgencySensationalism: boolean;
+  bestAnswerExcerpt?: string;
+  reasoningNote?: string;
 }) {
   const {
     rawText,
@@ -707,6 +812,8 @@ function generateMultilingualDossierContent(params: {
     sourceEntity,
     hasPhishingSignals,
     hasUrgencySensationalism,
+    bestAnswerExcerpt,
+    reasoningNote,
   } = params;
 
   let spokenAudioKn = '';
@@ -730,13 +837,19 @@ function generateMultilingualDossierContent(params: {
   if (clearVerdictStatus === 'FAKE') {
     spokenAudioKn = `ಸ್ಪಷ್ಟ ಎಚ್ಚರಿಕೆ! '${topicLabelEn}' ಕುರಿತು ಹರಡುತ್ತಿರುವ ಈ ಸುದ್ದಿ ಸಂಪೂರ್ಣ ಸುಳ್ಳಾಗಿದೆ. ಅಧಿಕೃತ ಇಲಾಖೆ ಇಂತಹ ಯಾವುದೇ ಆದೇಶ ಅಥವಾ ಯೋಜನೆಯನ್ನು ಪ್ರಕಟಿಸಿಲ್ಲ. ಇದು ಸಾರ್ವಜನಿಕರನ್ನು ದಾರಿತಪ್ಪಿಸಲು ಹಬ್ಬಿಸಲಾದ ನಕಲಿ ಸಂದೇಶವಾಗಿದ್ದು, ಯಾರೂ ಇದನ್ನು ನಂಬಬೇಡಿ ಮತ್ತು ಫಾರ್ವರ್ಡ್ ಮಾಡಬೇಡಿ.`;
     spokenAudioHi = `सावधान! '${topicLabelEn}' को लेकर सोशल मीडिया पर वायरल हो रहा यह दावा पूरी तरह फर्जी और निराधार है। संबंधित विभाग ने स्पष्ट किया है कि ऐसा कोई आदेश जारी नहीं हुआ है। कृपया इस झूठे संदेश को आगे न भेजें।`;
-    spokenAudioEn = `Warning! The circulating claim regarding "${topicLabelEn}" is completely FAKE. Official authorities and fact-checking records confirm this statement is entirely fabricated and contradicted by official evidence. Do not share.`;
+    spokenAudioEn = bestAnswerExcerpt
+      ? `Warning! The claim regarding "${topicLabelEn}" is FAKE and contradicted by retrieved evidence: ${bestAnswerExcerpt.slice(0, 200)}`
+      : `Warning! The circulating claim regarding "${topicLabelEn}" is completely FAKE. Official authorities and fact-checking records confirm this statement is entirely fabricated and contradicted by official evidence. Do not share.`;
 
-    summaryEn = `Multiple official sources and regulatory archives confirm that this claim is false. Verified records explicitly contradict the viral message.`;
+    summaryEn = bestAnswerExcerpt
+      ? `Retrieved evidence directly contradicts this claim: ${bestAnswerExcerpt.slice(0, 260)}`
+      : `Multiple official sources and regulatory archives confirm that this claim is false. Verified records explicitly contradict the viral message.`;
     summaryKn = `ಅಧಿಕೃತ ದಾಖಲೆಗಳ ಪರಿಶೀಲನೆಯಲ್ಲಿ ಈ ಸುದ್ದಿ ಸಂಪೂರ್ಣ ಸುಳ್ಳೆಂದು ದೃಢಪಟ್ಟಿದೆ. ಸರ್ಕಾರ ಅಥವಾ ಸಂಬಂಧಪಟ್ಟ ಇಲಾಖೆಯು ಇಂತಹ ಯಾವುದೇ ಸೂಚನೆ ಹೊರಡಿಸಿಲ್ಲ.`;
     summaryHi = `आधिकारिक अभिलेखों की जांच से पुष्टि हुई है कि यह खबर पूरी तरह फर्जी है। सरकार द्वारा ऐसी कोई सूचना या अधिसूचना जारी नहीं की गई है।`;
 
-    debunkEn = `The claim "${rawText}" is contradicted by authoritative records. Official fact-checking bureaus and the relevant ministry have confirmed that no such order, scheme, or event exists.`;
+    debunkEn = bestAnswerExcerpt
+      ? `The claim "${rawText}" is contradicted by retrieved authoritative records. ${reasoningNote || ''} Evidence excerpt: "${bestAnswerExcerpt}"`
+      : `The claim "${rawText}" is contradicted by authoritative records. Official fact-checking bureaus and the relevant ministry have confirmed that no such order, scheme, or event exists.`;
     debunkKn = `'${rawText}' ಎಂಬ ಸುದ್ದಿಗೆ ಯಾವುದೇ ಅಧಿಕೃತ ಸರ್ಕಾರಿ ಆಧಾರವಿಲ್ಲ. ಸತ್ಯಾಸತ್ಯತೆ ಪರಿಶೀಲನಾ ಘಟಕಗಳು ಮತ್ತು ಸಂಬಂಧಪಟ್ಟ ಇಲಾಖೆಗಳು ಪರಿಶೀಲಿಸಿದ್ದು, ಇಂತಹ ಯಾವುದೇ ಆದೇಶಗಳು ಹೊರಬಿದ್ದಿಲ್ಲ ಎಂದು ಸ್ಪಷ್ಟಪಡಿಸಿವೆ.`;
     debunkHi = `'${rawText}' का दावा पूरी तरह तथ्यहीन और झूठा है। तथ्य-जांच इकाइयों और संबंधित विभागों ने पुष्टि की है कि ऐसा कोई आदेश या परिपत्र जारी नहीं हुआ है।`;
 
@@ -750,18 +863,24 @@ function generateMultilingualDossierContent(params: {
     if (hasUrgencySensationalism) {
       redFlags.push('Employs emotional urgency or command words urging fast forward');
     }
-    redFlags.push('Contradicted by primary government notifications and gazette dispatch records');
-    redFlags.push('Inconsistent font weights or missing departmental digital authorization');
+    redFlags.push('Contradicted by primary government notifications and verified records');
+    redFlags.push('Inconsistent claims or missing departmental authorization');
   } else if (clearVerdictStatus === 'REAL') {
     spokenAudioKn = `ಅಧಿಕೃತ ದೃಢೀಕರಣ! '${topicLabelEn}' ಕುರಿತ ಈ ಮಾಹಿತಿ ನೈಜವಾಗಿದ್ದು, ಸರ್ಕಾರಿ ದಾಖಲೆಗಳು ಮತ್ತು ಅಧಿಕೃತ ಪ್ರಕಟಣೆಯೊಂದಿಗೆ ತಾಳೆಯಾಗಿದೆ. ಇದು ಸತ್ಯವಾದ ಅಧಿಕೃತ ಸುದ್ದಿಯಾಗಿದೆ.`;
     spokenAudioHi = `सत्यापित सूचना! '${topicLabelEn}' से संबंधित यह खबर पूरी तरह सच है और आधिकारिक रिकॉर्ड व सरकारी विज्ञप्ति द्वारा प्रमाणित है।`;
-    spokenAudioEn = `Confirmed Real! The claim regarding "${topicLabelEn}" has been verified through official gazette repositories and official agency press releases.`;
+    spokenAudioEn = bestAnswerExcerpt
+      ? `Confirmed Real! Based on retrieved authoritative sources regarding "${topicLabelEn}": ${bestAnswerExcerpt.slice(0, 220)}`
+      : `Confirmed Real! The claim regarding "${topicLabelEn}" has been verified through official gazette repositories and official agency press releases.`;
 
-    summaryEn = `Corroborated by primary agency press releases and official gazette dispatches. The core factual assertions in this claim are accurate.`;
+    summaryEn = bestAnswerExcerpt
+      ? `Verified by retrieved authoritative sources: ${bestAnswerExcerpt.slice(0, 280)}`
+      : `Corroborated by primary agency press releases and official gazette dispatches. The core factual assertions in this claim are accurate.`;
     summaryKn = `ಅಧಿಕೃತ ಸರ್ಕಾರಿ ಪ್ರಕಟಣೆ ಮತ್ತು ದಾಖಲೆಗಳೊಂದಿಗೆ ಈ ಮಾಹಿತಿ ತಾಳೆಯಾಗಿದ್ದು, ಸುದ್ದಿ ಸತ್ಯವೆಂದು ದೃಢಪಟ್ಟಿದೆ.`;
     summaryHi = `सरकारी विज्ञप्ति और आधिकारिक रिकॉर्ड द्वारा पुष्टि की गई है कि यह खबर सत्य है।`;
 
-    debunkEn = `Verification confirms that "${rawText}" is supported by authoritative primary records. Relevant governing bodies and newsrooms have documented and confirmed this development.`;
+    debunkEn = bestAnswerExcerpt
+      ? `Verification confirms "${rawText}" based on retrieved official and reference records. ${reasoningNote || ''} Evidence: "${bestAnswerExcerpt}"`
+      : `Verification confirms that "${rawText}" is supported by authoritative primary records. Relevant governing bodies and newsrooms have documented and confirmed this development.`;
     debunkKn = `'${rawText}' ಕುರಿತಾದ ಮಾಹಿತಿಯನ್ನು ಸಂಬಂಧಪಟ್ಟ ಅಧಿಕೃತ ಇಲಾಖೆ ಮತ್ತು ಗೆಜೆಟ್ ದಾಖಲೆಗಳು ಖಚಿತಪಡಿಸಿವೆ. ಇದು ಪ್ರಾಥಮಿಕ ಮೂಲಗಳಿಂದ ದೃಢಪಟ್ಟ ಸತ್ಯ ಸುದ್ದಿಯಾಗಿದೆ.`;
     debunkHi = `'${rawText}' का विवरण आधिकारिक रिकॉर्ड और सरकारी प्रेस विज्ञप्ति द्वारा प्रमाणित है। यह दावा सत्य और प्रामाणिक पाया गया है।`;
 

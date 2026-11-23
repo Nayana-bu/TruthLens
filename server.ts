@@ -56,7 +56,7 @@ if (apiKey) {
 async function fetchLiveWebEvidence(query: string) {
   const sources: any[] = [];
   try {
-    const trimmed = query.trim().replace(/[^\w\s-]/g, ' ').slice(0, 80);
+    const trimmed = query.trim().replace(/[^\p{L}\p{M}\p{N}\s-]/gu, ' ').replace(/\s+/g, ' ').slice(0, 80);
     // 1. DuckDuckGo Instant Answer API
     const ddgUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(trimmed)}&format=json&no_html=1&skip_disambig=1`;
     const ddgRes = await fetch(ddgUrl, {
@@ -125,95 +125,96 @@ async function fetchLiveWebEvidence(query: string) {
   return sources;
 }
 
-// API Route: Autonomous Claim Investigation & Multi-Source Evidence Fact-Checking
-app.post('/api/investigate', async (req: Request, res: Response) => {
-  const startTime = Date.now();
+function cosineSimilarityVec(a: number[], b: number[]): number {
+  const len = Math.min(a.length, b.length);
+  if (len === 0) return 0;
+  let dot = 0;
+  let normA = 0;
+  let normB = 0;
+  for (let i = 0; i < len; i++) {
+    dot += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+  if (normA === 0 || normB === 0) return 0;
+  return Math.max(0, Math.min(1, dot / (Math.sqrt(normA) * Math.sqrt(normB))));
+}
+
+/**
+ * Server-side dense vector reranking using gemini-embedding-2 with a strict 2.5s timeout
+ * and graceful fallback to lexical/n-gram hybrid scores if quota or network is unavailable.
+ */
+async function applyDenseEmbeddingRerank(
+  queryText: string,
+  results: SearchResultItem[]
+): Promise<SearchResultItem[]> {
+  if (!ai || !queryText || results.length <= 1) return results;
   try {
-    const { claim, mode, imageBase64, imageName } = req.body;
-    const userClaimText = (claim || '').trim();
+    const candidates = results.slice(0, 6);
+    const texts = [
+      queryText.slice(0, 400),
+      ...candidates.map((r) => `${r.title}. ${r.snippet}`.slice(0, 500)),
+    ];
 
-    console.log(`\n=============================================================`);
-    console.log(`[TRUTHLENS-ENGINE] Ingested verification request:`);
-    console.log(`[TRUTHLENS-ENGINE] Claim: "${userClaimText.slice(0, 120)}" (mode: ${mode || 'text'})`);
-    if (imageBase64) {
-      console.log(`[TRUTHLENS-ENGINE] Attached image evidence detected (${imageBase64.length} chars)`);
+    const embedPromise = ai.models.embedContent({
+      model: 'gemini-embedding-2',
+      contents: texts,
+    });
+    const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 1800));
+    const embedRes = (await Promise.race([embedPromise, timeoutPromise])) as any;
+    const embeddings = embedRes?.embeddings;
+
+    if (!Array.isArray(embeddings) || embeddings.length !== texts.length) {
+      return results;
     }
 
-    if (!userClaimText && !imageBase64) {
-      return res.status(400).json({ error: 'Please enter news or claim text to investigate.' });
-    }
+    const queryVec: number[] = embeddings[0]?.values || [];
+    if (queryVec.length === 0) return results;
 
-    // Step 1: RAG Input Processing (Claim and Entity extraction)
-    const ragInput = extractClaimsAndEntities(userClaimText, mode, imageName);
-    console.log(`[TRUTHLENS-RAG] Extracted ${ragInput.extractedClaims.length} atomic factual sub-claims, ` +
-      `${ragInput.extractedEntities.organizations.length} orgs, ${ragInput.extractedEntities.dates.length} dates`);
+    const reranked = candidates.map((item, idx) => {
+      const docVec: number[] = embeddings[idx + 1]?.values || [];
+      const denseSim = docVec.length > 0 ? cosineSimilarityVec(queryVec, docVec) : (item.semanticScore || 0);
+      const blendedSemantic = Number((0.5 * (item.semanticScore || 0) + 0.5 * denseSim).toFixed(3));
+      const baseOther =
+        0.27 * (item.keywordScore || 0) +
+        0.20 * (item.entityScore || 0) +
+        0.15 * (item.isPrimary ? 1.0 : item.credibilityTier === 'factcheck_org' ? 0.92 : item.credibilityTier === 'accredited_press' ? 0.86 : 0.5);
+      const updatedRelevance = Number((0.38 * blendedSemantic + baseOther).toFixed(3));
+      return {
+        ...item,
+        semanticScore: blendedSemantic,
+        relevanceScore: updatedRelevance,
+      };
+    });
 
-    // Step 2: Multi-Query Live Web Search & Deduplication
-    let searchOutput: any = {
-      results: [],
-      searchProviderStatus: 'operational',
-      queryCount: 1,
-      deduplicatedCount: 0,
-      queriesRun: [],
-    };
+    const remainder = results.slice(6);
+    return [...reranked, ...remainder].sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0));
+  } catch {
+    return results;
+  }
+}
 
-    if (userClaimText && userClaimText.length > 4) {
-      searchOutput = await executeMultiQuerySearch(
-        ragInput.extractedClaims,
-        ragInput.extractedEntities,
-        userClaimText
-      );
-      console.log(`[TRUTHLENS-RAG] Live web search executed ${searchOutput.queryCount} queries, found ${searchOutput.results.length} relevant excerpts (${searchOutput.deduplicatedCount} deduplicated)`);
-    }
+function mapStanceToSourceStatus(
+  stance?: 'supports' | 'contradicts' | 'contextual'
+): 'confirmed' | 'refuted' | 'corroborated' | 'unverified' | 'contradicted' {
+  if (stance === 'supports') return 'confirmed';
+  if (stance === 'contradicts') return 'contradicted';
+  return 'corroborated';
+}
 
-    // Step 3: Build local baseline dossier with strict multi-verdict rules
-    const liveWebSources: EvidenceSource[] = searchOutput.results.map((r: SearchResultItem) => ({
-      name: r.sourceName,
-      category: r.category,
-      status: 'confirmed',
-      details: r.snippet,
-      url: r.url,
-      timestamp: 'Just verified',
-      publicationDate: r.publicationDate || 'October 28, 2026',
-      isPrimary: r.isPrimary,
-      credibilityTier: r.credibilityTier,
-    }));
-
-    const localDossier = analyzeClaimText(
-      userClaimText || `[Attached Screenshot: ${imageName || 'Evidence'}]`,
-      mode,
-      imageName,
-      liveWebSources.length > 0 ? liveWebSources : undefined
-    );
-
-    console.log(`[TRUTHLENS-ENGINE] Baseline evaluation: ${localDossier.verdict} (${localDossier.clearVerdictStatus}), calibrated score: ${localDossier.confidenceScore}%`);
-
-    // Step 4: If Gemini AI is configured, execute Search-Grounded Reasoning with RAG Context
-    if (ai) {
-      try {
-        console.log(`[TRUTHLENS-ENGINE] Calling Gemini 4 Hydrogen with Live RAG Context & Google Search Grounding...`);
-        let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
-        const timeoutPromise = new Promise<null>((resolve) => {
-          timeoutHandle = setTimeout(() => {
-            console.log(`[TRUTHLENS-ENGINE] Gemini grounding request exceeded 25s; using retrieved RAG forensic dossier.`);
-            resolve(null);
-          }, 25000);
-        });
-
-        // Format RAG evidence context using aggregated search results
-        const ragEvidenceContextText = aggregateEvidenceContext(
-          searchOutput.results,
-          ragInput.extractedClaims,
-          localDossier.sourceEntity
-        );
-
-        const aiCall = (async () => {
-          const promptText = `
+function buildTruthLensPrompt(
+  claimText: string,
+  ragEvidenceContextText: string,
+  todayFormatted: string,
+  normalizedQuery?: string
+): string {
+  return `
 You are TruthLens Verify, an elite constitutional civic fact-checking and forensic verification engine in India with access to live Google Search data and retrieved RAG context.
-Today's date in this environment is: October 28, 2026.
+Today's date is: ${todayFormatted}.
 
-Analyze the following claim or forwarded viral message:
-"${userClaimText || 'Investigate the attached screenshot image'}"
+Analyze the following user submission (preserving the original meaning and negation even if it contains typos, missing words, or Kannada/Hindi text):
+ORIGINAL INPUT: "${claimText}"
+${normalizedQuery && normalizedQuery !== claimText ? `NORMALIZED QUERY UNDERSTANDING: "${normalizedQuery}"` : ''}
 
 RETRIEVED RAG LIVE WEB EVIDENCE CONTEXT:
 ${ragEvidenceContextText}
@@ -222,14 +223,15 @@ INVESTIGATION & FACT-CHECKING METHODOLOGY:
 1. Search current official records, gazettes, PIB Fact Check, government portals (IMD, RBI, NPCI, ECI, State Portals), established news organizations (Reuters, The Hindu, Indian Express, BBC, NDTV, PTI), and certified fact-checkers.
 2. Gather BOTH supporting evidence and contradicting evidence.
 3. Compare sources and assess independence. Deduplicate syndicated copies.
-4. Distinguish FALSE claims from UNVERIFIED claims:
-   - 'verified_true': Reliable official or established news evidence actively corroborates the core claim.
-   - 'false': Authoritative records, gazettes, or certified fact-checkers explicitly debunk, refute, or contradict the claim with documented evidence.
-   - 'misleading': The content creates a false impression, recycles older orders/videos from past years as current, or misquotes reality.
-   - 'partly_true': Part of the claim is factual and verified, but other key elements are false, unsupported, or exaggerated.
-   - 'context_missing': The factual claim is technically accurate, but key context or qualifications are omitted, distorting its meaning.
-   - 'unverified': Available evidence is insufficient to confirm or deny. CRITICAL RULE: NEVER classify a claim as 'false' merely because no evidence was found. Absence of evidence is NOT evidence of falsity! If search yields no conclusive official records or debunks, you MUST return 'unverified'.
-5. Support recent events published after model cutoff (e.g. Cyclone Arnab on October 28, 2026). Ground your evaluation in the retrieved live weather/official advisories.
+4. Distinguish REAL vs FAKE vs UNVERIFIED rigorously:
+   - 'verified_true' ('REAL'): Authoritative retrieved records or live Google Search results actively corroborate the core claim, answer a factual question (e.g., "Who is presdent of india" -> Droupadi Murmu), OR document/confirm a real news topic or civic development (e.g., "pink line of bengaluru namma metro news", "Mumbai coastal road opened").
+   - 'false' ('FAKE'): Authoritative records, gazettes, or certified fact-checkers explicitly debunk, refute, or contradict the claim (including false negations like "Modi is not PM", wrong office-holders, or fabricated numbers).
+   - 'misleading' ('MISLEADING'): The content creates a false impression, recycles older orders/videos from past years as current, or misquotes reality.
+   - 'partly_true' ('PARTLY_TRUE'): Part of the claim is factual and verified, or credible sources conflict / only a partial phase is operational.
+   - 'context_missing' ('CONTEXT_MISSING'): The factual claim is technically accurate, but key context or qualifications are omitted, distorting its meaning.
+   - 'unverified' ('UNVERIFIED'): Available evidence is genuinely insufficient to confirm or deny. NEVER classify a claim as 'false' merely because no evidence was found. Conversely, NEVER return 'unverified' if the retrieved RAG context or live search already documents, confirms, or debunks the news/query — and NEVER mark real documented news as 'unverified' simply because the user phrased it briefly or ended it with "news".
+   - NEVER classify as 'verified_true' based solely on shared keywords if the subject, person, numeric value, or negation contradicts the evidence!
+5. Support recent events published after model cutoff. Ground your evaluation in the retrieved live advisories and search results.
 
 CONFIDENCE SCORE RULES:
 - Calibrated 85-95%: Multiple independent primary sources actively confirm or contradict.
@@ -268,11 +270,121 @@ Return ONLY a valid JSON object in a \`\`\`json ... \`\`\` code fence with the f
       "status": "confirmed" | "refuted" | "corroborated" | "unverified" | "contradicted",
       "details": "What specific evidence this source provides",
       "url": "https://...",
-      "publicationDate": "October 28, 2026"
+      "publicationDate": "${todayFormatted}"
     }
   ]
 }
 `;
+}
+
+// API Route: Autonomous Claim Investigation & Multi-Source Evidence Fact-Checking
+app.post('/api/investigate', async (req: Request, res: Response) => {
+  const startTime = Date.now();
+  try {
+    const { claim, mode, imageBase64, imageName } = req.body;
+    const userClaimText = (claim || '').trim();
+
+    console.log(`\n=============================================================`);
+    console.log(`[TRUTHLENS-ENGINE] Ingested verification request:`);
+    console.log(`[TRUTHLENS-ENGINE] Claim: "${userClaimText.slice(0, 120)}" (mode: ${mode || 'text'})`);
+    if (imageBase64) {
+      console.log(`[TRUTHLENS-ENGINE] Attached image evidence detected (${imageBase64.length} chars)`);
+    }
+
+    if (!userClaimText && !imageBase64) {
+      return res.status(400).json({ error: 'Please enter news or claim text to investigate.' });
+    }
+
+    // Step 1: RAG Input Processing (Intelligent Query Preprocessing, Claim and Entity extraction)
+    const ragInput = extractClaimsAndEntities(userClaimText, mode, imageName);
+    const todayFormatted = new Date().toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    });
+    console.log(`[TRUTHLENS-RAG] Normalized query (${ragInput.detectedLanguage}): "${ragInput.normalizedQuery.slice(0, 120)}"`);
+    console.log(`[TRUTHLENS-RAG] Extracted ${ragInput.extractedClaims.length} atomic factual sub-claims, ` +
+      `${ragInput.extractedEntities.organizations.length} orgs, ${ragInput.extractedEntities.dates.length} dates`);
+
+    // Step 2: Hybrid Multi-Query Live Web Search, Relevance Filtering & Reranking
+    let searchOutput: any = {
+      results: [],
+      searchProviderStatus: 'operational',
+      queryCount: 1,
+      deduplicatedCount: 0,
+      filteredIrrelevantCount: 0,
+      queriesRun: [],
+    };
+
+    if (userClaimText && userClaimText.length > 2 && !ragInput.isOcrFailureOrEmpty) {
+      searchOutput = await executeMultiQuerySearch(
+        ragInput.extractedClaims,
+        ragInput.extractedEntities,
+        userClaimText,
+        ragInput.preprocessed
+      );
+      if (ai && searchOutput.results.length > 1) {
+        searchOutput.results = await applyDenseEmbeddingRerank(
+          ragInput.preprocessed.normalizedQuery,
+          searchOutput.results
+        );
+      }
+      console.log(
+        `[TRUTHLENS-RAG] Live web search executed ${searchOutput.queryCount} queries, ` +
+          `kept ${searchOutput.results.length} relevant excerpts (${searchOutput.deduplicatedCount} deduplicated, ${searchOutput.filteredIrrelevantCount || 0} irrelevant filtered)`
+      );
+    }
+
+    // Step 3: Build local baseline dossier grounded in retrieved RAG results
+    const liveWebSources: EvidenceSource[] = searchOutput.results.map((r: SearchResultItem) => ({
+      name: r.sourceName,
+      category: r.category,
+      status: mapStanceToSourceStatus(r.stance),
+      details: r.snippet,
+      url: r.url,
+      timestamp: 'Just verified',
+      publicationDate: r.publicationDate || todayFormatted,
+      isPrimary: r.isPrimary,
+      credibilityTier: r.credibilityTier,
+    }));
+
+    const localDossier = analyzeClaimText(
+      userClaimText || `[Attached Screenshot: ${imageName || 'Evidence'}]`,
+      mode,
+      imageName,
+      liveWebSources.length > 0 ? liveWebSources : undefined,
+      searchOutput.results
+    );
+
+    console.log(`[TRUTHLENS-ENGINE] Baseline RAG evaluation: ${localDossier.verdict} (${localDossier.clearVerdictStatus}), calibrated score: ${localDossier.confidenceScore}%`);
+
+    // Step 4: If Gemini AI is configured, execute Search-Grounded Reasoning with RAG Context
+    if (ai) {
+      try {
+        console.log(`[TRUTHLENS-ENGINE] Calling Gemini 4 Hydrogen with Live RAG Context & Google Search Grounding...`);
+        let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+        const timeoutPromise = new Promise<null>((resolve) => {
+          timeoutHandle = setTimeout(() => {
+            console.log(`[TRUTHLENS-ENGINE] Gemini grounding request exceeded 15s; using retrieved RAG forensic dossier.`);
+            resolve(null);
+          }, 15000);
+        });
+
+        // Format RAG evidence context using aggregated search results
+        const ragEvidenceContextText = aggregateEvidenceContext(
+          searchOutput.results,
+          ragInput.extractedClaims,
+          localDossier.sourceEntity,
+          ragInput.preprocessed
+        );
+
+        const aiCall = (async () => {
+          const promptText = buildTruthLensPrompt(
+            userClaimText || 'Investigate the attached screenshot image',
+            ragEvidenceContextText,
+            todayFormatted,
+            ragInput.normalizedQuery
+          );
 
           const contents: any[] = [];
           if (imageBase64) {
@@ -348,7 +460,7 @@ Return ONLY a valid JSON object in a \`\`\`json ... \`\`\` code fence with the f
               status: (parsedData.clearVerdictStatus === 'REAL' ? 'confirmed' : parsedData.clearVerdictStatus === 'FAKE' ? 'refuted' : 'corroborated'),
               details: `Live citation verified via search index (${c.web.title || c.web.uri})`,
               url: c.web.uri,
-              publicationDate: 'October 28, 2026',
+              publicationDate: todayFormatted,
               credibilityTier: 'accredited_press' as const,
             }));
 
@@ -371,8 +483,26 @@ Return ONLY a valid JSON object in a \`\`\`json ... \`\`\` code fence with the f
             ...liveWebSources,
           ];
 
-          const resolvedVerdict = parsed.verdict || localDossier.verdict;
-          let resolvedClearStatus = parsed.clearVerdictStatus;
+          // Prevent false UNVERIFIED whenever live retrieved RAG evidence decisively verifies or refutes the claim
+          let resolvedVerdict = parsed.verdict || localDossier.verdict;
+          let preventedFalseUnverified = false;
+          const strongRagSignals = searchOutput.results.filter(
+            (r: SearchResultItem) => r.stance === 'supports' || r.stance === 'contradicts'
+          );
+          const hasCredibleRagSignal = strongRagSignals.some(
+            (r: SearchResultItem) => r.credibilityTier !== 'secondary_web' || (r.relevanceScore || 0) >= 0.55
+          );
+          if (
+            resolvedVerdict === 'unverified' &&
+            localDossier.verdict !== 'unverified' &&
+            (hasCredibleRagSignal || strongRagSignals.length >= 2)
+          ) {
+            console.log(`[TRUTHLENS-RAG] Preventing false UNVERIFIED: strong retrieved RAG evidence supports '${localDossier.verdict}' (${strongRagSignals.length} signal(s))`);
+            resolvedVerdict = localDossier.verdict;
+            preventedFalseUnverified = true;
+          }
+
+          let resolvedClearStatus = preventedFalseUnverified ? undefined : parsed.clearVerdictStatus;
           if (!resolvedClearStatus) {
             if (resolvedVerdict === 'verified_true') resolvedClearStatus = 'REAL';
             else if (resolvedVerdict === 'false') resolvedClearStatus = 'FAKE';
@@ -398,34 +528,42 @@ Return ONLY a valid JSON object in a \`\`\`json ... \`\`\` code fence with the f
             title: parsed.title || localDossier.title,
             originalClaim: userClaimText || localDossier.originalClaim,
             verdict: resolvedVerdict,
-            verdictLabel: parsed.verdictLabel || localDossier.verdictLabel,
-            verdictSubtitle: parsed.verdictSubtitle || localDossier.verdictSubtitle,
+            verdictLabel: preventedFalseUnverified ? localDossier.verdictLabel : (parsed.verdictLabel || localDossier.verdictLabel),
+            verdictSubtitle: preventedFalseUnverified ? localDossier.verdictSubtitle : (parsed.verdictSubtitle || localDossier.verdictSubtitle),
             confidenceScore: evidenceAnalysis.criteriaScore,
             timeAgo: 'Just verified',
             category: parsed.category || localDossier.category,
             sourceEntity: parsed.sourceEntity || localDossier.sourceEntity,
             languages: ['en', 'kn', 'hi'] as ('en' | 'kn' | 'hi')[],
             clearVerdictStatus: resolvedClearStatus,
-            summary: {
-              en: parsed.summaryEn || localDossier.summary.en,
-              kn: parsed.summaryKn || localDossier.summary.kn,
-              hi: parsed.summaryHi || localDossier.summary.hi,
-            },
-            debunkExplanation: {
-              en: parsed.debunkExplanationEn || localDossier.debunkExplanation.en,
-              kn: parsed.debunkExplanationKn || localDossier.debunkExplanation.kn,
-              hi: parsed.debunkExplanationHi || localDossier.debunkExplanation.hi,
-            },
-            spokenAudioScript: {
-              kn: parsed.spokenAudioScriptKn || localDossier.spokenAudioScript.kn,
-              hi: parsed.spokenAudioScriptHi || localDossier.spokenAudioScript.hi,
-              en: parsed.spokenAudioScriptEn || localDossier.spokenAudioScript.en,
-            },
-            whatsappDebunkNote: {
-              en: parsed.whatsappDebunkNoteEn || localDossier.whatsappDebunkNote.en,
-              kn: parsed.whatsappDebunkNoteKn || localDossier.whatsappDebunkNote.kn,
-              hi: parsed.whatsappDebunkNoteHi || localDossier.whatsappDebunkNote.hi,
-            },
+            summary: preventedFalseUnverified
+              ? localDossier.summary
+              : {
+                  en: parsed.summaryEn || localDossier.summary.en,
+                  kn: parsed.summaryKn || localDossier.summary.kn,
+                  hi: parsed.summaryHi || localDossier.summary.hi,
+                },
+            debunkExplanation: preventedFalseUnverified
+              ? localDossier.debunkExplanation
+              : {
+                  en: parsed.debunkExplanationEn || localDossier.debunkExplanation.en,
+                  kn: parsed.debunkExplanationKn || localDossier.debunkExplanation.kn,
+                  hi: parsed.debunkExplanationHi || localDossier.debunkExplanation.hi,
+                },
+            spokenAudioScript: preventedFalseUnverified
+              ? localDossier.spokenAudioScript
+              : {
+                  kn: parsed.spokenAudioScriptKn || localDossier.spokenAudioScript.kn,
+                  hi: parsed.spokenAudioScriptHi || localDossier.spokenAudioScript.hi,
+                  en: parsed.spokenAudioScriptEn || localDossier.spokenAudioScript.en,
+                },
+            whatsappDebunkNote: preventedFalseUnverified
+              ? localDossier.whatsappDebunkNote
+              : {
+                  en: parsed.whatsappDebunkNoteEn || localDossier.whatsappDebunkNote.en,
+                  kn: parsed.whatsappDebunkNoteKn || localDossier.whatsappDebunkNote.kn,
+                  hi: parsed.whatsappDebunkNoteHi || localDossier.whatsappDebunkNote.hi,
+                },
             sources: combinedSources.length > 0 ? combinedSources : localDossier.sources,
             redFlags:
               parsed.redFlags && parsed.redFlags.length > 0
@@ -436,10 +574,12 @@ Return ONLY a valid JSON object in a \`\`\`json ... \`\`\` code fence with the f
             officialRefId: parsed.officialRefId || localDossier.officialRefId,
             groundingInfo: {
               isGrounded: true,
-              queries: webSearchQueries.length > 0 ? webSearchQueries : [
-                `${userClaimText} fact check`,
-                `${userClaimText} official announcement verification`
-              ],
+              queries: Array.from(
+                new Set([
+                  ...(webSearchQueries || []),
+                  ...(searchOutput.queriesRun || []),
+                ])
+              ).slice(0, 6),
               sources: combinedSources.map((s: any) => ({ title: s.name, uri: s.url || '' })),
             },
             extractedClaims: ragInput.extractedClaims,
@@ -456,7 +596,7 @@ Return ONLY a valid JSON object in a \`\`\`json ... \`\`\` code fence with the f
           const recordToSave: InvestigationRecord = {
             id: formattedDossier.id,
             originalInput: userClaimText || (imageName ? `Image: ${imageName}` : 'Submitted image'),
-            extractedText: ragInput.extractedClaims.join('\n') || userClaimText,
+            extractedText: ragInput.extractedClaims.map((c) => c.claim).join('\n') || userClaimText,
             inputType: (mode as any) || 'text',
             verdict: formattedDossier.verdict,
             clearVerdictStatus: formattedDossier.clearVerdictStatus,
@@ -491,7 +631,7 @@ Return ONLY a valid JSON object in a \`\`\`json ... \`\`\` code fence with the f
     const localRecord: InvestigationRecord = {
       id: localDossier.id,
       originalInput: userClaimText || (imageName ? `Image: ${imageName}` : 'Submitted image'),
-      extractedText: ragInput.extractedClaims.join('\n') || userClaimText,
+      extractedText: ragInput.extractedClaims.map((c) => c.claim).join('\n') || userClaimText,
       inputType: (mode as any) || 'text',
       verdict: localDossier.verdict,
       clearVerdictStatus: localDossier.clearVerdictStatus,
@@ -607,35 +747,48 @@ app.put('/api/investigations/:id', async (req: Request, res: Response) => {
     console.log(`[TRUTHLENS-ENGINE] Original: "${existing.originalInput.slice(0, 80)}"`);
     console.log(`[TRUTHLENS-ENGINE] New Claim: "${userClaimText.slice(0, 80)}"`);
 
-    // Step 1: RAG Input Processing (Claim and Entity extraction)
+    // Step 1: RAG Input Processing (Intelligent Query Preprocessing, Claim and Entity extraction)
     const ragInput = extractClaimsAndEntities(userClaimText, mode || existing.inputType);
+    const todayFormatted = new Date().toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    });
 
-    // Step 2: Multi-Query Live Web Search & Deduplication
+    // Step 2: Hybrid Multi-Query Live Web Search, Relevance Filtering & Reranking
     let searchOutput: any = {
       results: [],
       searchProviderStatus: 'operational',
       queryCount: 1,
       deduplicatedCount: 0,
+      filteredIrrelevantCount: 0,
       queriesRun: [],
     };
 
-    if (userClaimText && userClaimText.length > 4) {
+    if (userClaimText && userClaimText.length > 2 && !ragInput.isOcrFailureOrEmpty) {
       searchOutput = await executeMultiQuerySearch(
         ragInput.extractedClaims,
         ragInput.extractedEntities,
-        userClaimText
+        userClaimText,
+        ragInput.preprocessed
       );
+      if (ai && searchOutput.results.length > 1) {
+        searchOutput.results = await applyDenseEmbeddingRerank(
+          ragInput.preprocessed.normalizedQuery,
+          searchOutput.results
+        );
+      }
     }
 
-    // Step 3: Build local baseline dossier with strict multi-verdict rules
+    // Step 3: Build local baseline dossier grounded in retrieved RAG results
     const liveWebSources: EvidenceSource[] = searchOutput.results.map((r: SearchResultItem) => ({
       name: r.sourceName,
       category: r.category,
-      status: 'confirmed',
+      status: mapStanceToSourceStatus(r.stance),
       details: r.snippet,
       url: r.url,
       timestamp: 'Just verified',
-      publicationDate: r.publicationDate || 'October 28, 2026',
+      publicationDate: r.publicationDate || todayFormatted,
       isPrimary: r.isPrimary,
       credibilityTier: r.credibilityTier,
     }));
@@ -644,7 +797,8 @@ app.put('/api/investigations/:id', async (req: Request, res: Response) => {
       userClaimText,
       mode || existing.inputType,
       undefined,
-      liveWebSources.length > 0 ? liveWebSources : undefined
+      liveWebSources.length > 0 ? liveWebSources : undefined,
+      searchOutput.results
     );
     localDossier.id = id;
 
@@ -657,83 +811,25 @@ app.put('/api/investigations/:id', async (req: Request, res: Response) => {
         let editTimeoutHandle: ReturnType<typeof setTimeout> | null = null;
         const timeoutPromise = new Promise<null>((resolve) => {
           editTimeoutHandle = setTimeout(() => {
-            console.log(`[TRUTHLENS-ENGINE] Gemini re-verification request exceeded 25s; using retrieved RAG forensic dossier.`);
+            console.log(`[TRUTHLENS-ENGINE] Gemini re-verification request exceeded 15s; using retrieved RAG forensic dossier.`);
             resolve(null);
-          }, 25000);
+          }, 15000);
         });
 
         const ragEvidenceContextText = aggregateEvidenceContext(
           searchOutput.results,
           ragInput.extractedClaims,
-          localDossier.sourceEntity
+          localDossier.sourceEntity,
+          ragInput.preprocessed
         );
 
         const aiCall = (async () => {
-          const promptText = `
-You are TruthLens Verify, an elite constitutional civic fact-checking and forensic verification engine in India with access to live Google Search data and retrieved RAG context.
-Today's date in this environment is: October 28, 2026.
-
-Analyze the following edited claim or forwarded viral message:
-"${userClaimText}"
-
-RETRIEVED RAG LIVE WEB EVIDENCE CONTEXT:
-${ragEvidenceContextText}
-
-INVESTIGATION & FACT-CHECKING METHODOLOGY:
-1. Search current official records, gazettes, PIB Fact Check, government portals (IMD, RBI, NPCI, ECI, State Portals), established news organizations (Reuters, The Hindu, Indian Express, BBC, NDTV, PTI), and certified fact-checkers.
-2. Gather BOTH supporting evidence and contradicting evidence.
-3. Compare sources and assess independence. Deduplicate syndicated copies.
-4. Distinguish FALSE claims from UNVERIFIED claims:
-   - 'verified_true': Reliable official or established news evidence actively corroborates the core claim.
-   - 'false': Authoritative records, gazettes, or certified fact-checkers explicitly debunk, refute, or contradict the claim with documented evidence.
-   - 'misleading': The content creates a false impression, recycles older orders/videos from past years as current, or misquotes reality.
-   - 'partly_true': Part of the claim is factual and verified, but other key elements are false, unsupported, or exaggerated.
-   - 'context_missing': The factual claim is technically accurate, but key context or qualifications are omitted, distorting its meaning.
-   - 'unverified': Available evidence is insufficient to confirm or deny. CRITICAL RULE: NEVER classify a claim as 'false' merely because no evidence was found. Absence of evidence is NOT evidence of falsity! If search yields no conclusive official records or debunks, you MUST return 'unverified'.
-5. Support recent events published after model cutoff. Ground your evaluation in the retrieved live weather/official advisories.
-
-CONFIDENCE SCORE RULES:
-- Calibrated 85-95%: Multiple independent primary sources actively confirm or contradict.
-- Calibrated 65-80%: Moderate evidence from reputable sources.
-- Calibrated 35-50%: Unverified or ambiguous claims with insufficient public data.
-- NEVER hardcode 99%.
-
-Return ONLY a valid JSON object in a \`\`\`json ... \`\`\` code fence with the following structure:
-{
-  "title": "Clear concise headline of the claim",
-  "verdict": "verified_true" | "false" | "misleading" | "partly_true" | "unverified" | "context_missing",
-  "clearVerdictStatus": "REAL" | "FAKE" | "MISLEADING" | "PARTLY_TRUE" | "UNVERIFIED" | "CONTEXT_MISSING",
-  "verdictLabel": "Short verdict badge label",
-  "verdictSubtitle": "Brief explanation of the verdict basis",
-  "confidenceScore": 92.4,
-  "category": "governance" | "space" | "weather" | "health" | "phishing" | "general",
-  "sourceEntity": "Name of relevant primary official body or fact check desk",
-  "summaryEn": "English summary of findings and evidence",
-  "summaryKn": "ಕನ್ನಡ ಸಾರಾಂಶ - ಸಾಕ್ಷ್ಯಾಧಾರಗಳ ಸಂಕ್ಷಿಪ್ತ ವಿವರ",
-  "summaryHi": "हिन्दी सारांश - साक्ष्यों का संक्षिप्त विवरण",
-  "debunkExplanationEn": "Comprehensive English explanation of the verdict based on evidence",
-  "debunkExplanationKn": "ಕನ್ನಡ ವಿವರಣೆ - ಸಾಕ್ಷ್ಯಗಳ ಆಧಾರದ ಮೇಲೆ ಸ್ಪಷ್ಟ ತೀರ್ಪಿನ ವಿವರಣೆ",
-  "debunkExplanationHi": "हिन्दी विवरण - साक्ष्यों के आधार पर स्पष्ट निष्कर्ष",
-  "spokenAudioScriptEn": "Natural English script to be spoken aloud explaining verdict",
-  "spokenAudioScriptKn": "ನೈಸರ್ಗಿಕ ಕನ್ನಡ ಧ್ವನಿ ವಿವರಣೆ",
-  "spokenAudioScriptHi": "प्राकृतिक हिन्दी ध्वनि विवरण",
-  "whatsappDebunkNoteEn": "Concise factual verification note in English",
-  "whatsappDebunkNoteKn": "ಕನ್ನಡ ಪರಿಶೀಲನಾ ಟಿಪ್ಪಣಿ",
-  "whatsappDebunkNoteHi": "हिन्दी सत्यापन नोट",
-  "redFlags": ["specific evidence limitation or red flag 1", "evidence finding 2"],
-  "officialRefId": "TL-VERIFY-XXXX",
-  "sources": [
-    {
-      "name": "Specific source name",
-      "category": "Primary Official Desk / Established News / Fact-Check Bureau",
-      "status": "confirmed" | "refuted" | "corroborated" | "unverified" | "contradicted",
-      "details": "What specific evidence this source provides",
-      "url": "https://...",
-      "publicationDate": "October 28, 2026"
-    }
-  ]
-}
-`;
+          const promptText = buildTruthLensPrompt(
+            userClaimText,
+            ragEvidenceContextText,
+            todayFormatted,
+            ragInput.normalizedQuery
+          );
           let geminiRes: any = null;
           try {
             geminiRes = await ai.models.generateContent({
@@ -792,7 +888,7 @@ Return ONLY a valid JSON object in a \`\`\`json ... \`\`\` code fence with the f
               status: (parsedData.clearVerdictStatus === 'REAL' ? 'confirmed' : parsedData.clearVerdictStatus === 'FAKE' ? 'refuted' : 'corroborated'),
               details: `Live citation verified via search index (${c.web.title || c.web.uri})`,
               url: c.web.uri,
-              publicationDate: 'October 28, 2026',
+              publicationDate: todayFormatted,
               credibilityTier: 'accredited_press' as const,
             }));
 
@@ -813,8 +909,25 @@ Return ONLY a valid JSON object in a \`\`\`json ... \`\`\` code fence with the f
             ...liveWebSources,
           ];
 
-          const resolvedVerdict = parsed.verdict || localDossier.verdict;
-          let resolvedClearStatus = parsed.clearVerdictStatus;
+          let resolvedVerdict = parsed.verdict || localDossier.verdict;
+          let preventedFalseUnverified = false;
+          const strongRagSignals = searchOutput.results.filter(
+            (r: SearchResultItem) => r.stance === 'supports' || r.stance === 'contradicts'
+          );
+          const hasCredibleRagSignal = strongRagSignals.some(
+            (r: SearchResultItem) => r.credibilityTier !== 'secondary_web' || (r.relevanceScore || 0) >= 0.55
+          );
+          if (
+            resolvedVerdict === 'unverified' &&
+            localDossier.verdict !== 'unverified' &&
+            (hasCredibleRagSignal || strongRagSignals.length >= 2)
+          ) {
+            console.log(`[TRUTHLENS-RAG] Preventing false UNVERIFIED on re-verify: strong retrieved RAG evidence supports '${localDossier.verdict}' (${strongRagSignals.length} signal(s))`);
+            resolvedVerdict = localDossier.verdict;
+            preventedFalseUnverified = true;
+          }
+
+          let resolvedClearStatus = preventedFalseUnverified ? undefined : parsed.clearVerdictStatus;
           if (!resolvedClearStatus) {
             if (resolvedVerdict === 'verified_true') resolvedClearStatus = 'REAL';
             else if (resolvedVerdict === 'false') resolvedClearStatus = 'FAKE';
@@ -839,34 +952,42 @@ Return ONLY a valid JSON object in a \`\`\`json ... \`\`\` code fence with the f
             title: parsed.title || localDossier.title,
             originalClaim: userClaimText,
             verdict: resolvedVerdict,
-            verdictLabel: parsed.verdictLabel || localDossier.verdictLabel,
-            verdictSubtitle: parsed.verdictSubtitle || localDossier.verdictSubtitle,
+            verdictLabel: preventedFalseUnverified ? localDossier.verdictLabel : (parsed.verdictLabel || localDossier.verdictLabel),
+            verdictSubtitle: preventedFalseUnverified ? localDossier.verdictSubtitle : (parsed.verdictSubtitle || localDossier.verdictSubtitle),
             confidenceScore: evidenceAnalysis.criteriaScore,
             timeAgo: 'Just verified',
             category: parsed.category || localDossier.category,
             sourceEntity: parsed.sourceEntity || localDossier.sourceEntity,
             languages: ['en', 'kn', 'hi'] as ('en' | 'kn' | 'hi')[],
             clearVerdictStatus: resolvedClearStatus,
-            summary: {
-              en: parsed.summaryEn || localDossier.summary.en,
-              kn: parsed.summaryKn || localDossier.summary.kn,
-              hi: parsed.summaryHi || localDossier.summary.hi,
-            },
-            debunkExplanation: {
-              en: parsed.debunkExplanationEn || localDossier.debunkExplanation.en,
-              kn: parsed.debunkExplanationKn || localDossier.debunkExplanation.kn,
-              hi: parsed.debunkExplanationHi || localDossier.debunkExplanation.hi,
-            },
-            spokenAudioScript: {
-              kn: parsed.spokenAudioScriptKn || localDossier.spokenAudioScript.kn,
-              hi: parsed.spokenAudioScriptHi || localDossier.spokenAudioScript.hi,
-              en: parsed.spokenAudioScriptEn || localDossier.spokenAudioScript.en,
-            },
-            whatsappDebunkNote: {
-              en: parsed.whatsappDebunkNoteEn || localDossier.whatsappDebunkNote.en,
-              kn: parsed.whatsappDebunkNoteKn || localDossier.whatsappDebunkNote.kn,
-              hi: parsed.whatsappDebunkNoteHi || localDossier.whatsappDebunkNote.hi,
-            },
+            summary: preventedFalseUnverified
+              ? localDossier.summary
+              : {
+                  en: parsed.summaryEn || localDossier.summary.en,
+                  kn: parsed.summaryKn || localDossier.summary.kn,
+                  hi: parsed.summaryHi || localDossier.summary.hi,
+                },
+            debunkExplanation: preventedFalseUnverified
+              ? localDossier.debunkExplanation
+              : {
+                  en: parsed.debunkExplanationEn || localDossier.debunkExplanation.en,
+                  kn: parsed.debunkExplanationKn || localDossier.debunkExplanation.kn,
+                  hi: parsed.debunkExplanationHi || localDossier.debunkExplanation.hi,
+                },
+            spokenAudioScript: preventedFalseUnverified
+              ? localDossier.spokenAudioScript
+              : {
+                  kn: parsed.spokenAudioScriptKn || localDossier.spokenAudioScript.kn,
+                  hi: parsed.spokenAudioScriptHi || localDossier.spokenAudioScript.hi,
+                  en: parsed.spokenAudioScriptEn || localDossier.spokenAudioScript.en,
+                },
+            whatsappDebunkNote: preventedFalseUnverified
+              ? localDossier.whatsappDebunkNote
+              : {
+                  en: parsed.whatsappDebunkNoteEn || localDossier.whatsappDebunkNote.en,
+                  kn: parsed.whatsappDebunkNoteKn || localDossier.whatsappDebunkNote.kn,
+                  hi: parsed.whatsappDebunkNoteHi || localDossier.whatsappDebunkNote.hi,
+                },
             sources: combinedSources.length > 0 ? combinedSources : localDossier.sources,
             redFlags: parsed.redFlags && parsed.redFlags.length > 0 ? parsed.redFlags : localDossier.redFlags,
             timeline: localDossier.timeline,
@@ -874,10 +995,12 @@ Return ONLY a valid JSON object in a \`\`\`json ... \`\`\` code fence with the f
             officialRefId: parsed.officialRefId || localDossier.officialRefId,
             groundingInfo: {
               isGrounded: true,
-              queries: webSearchQueries.length > 0 ? webSearchQueries : [
-                `${userClaimText} fact check`,
-                `${userClaimText} official announcement verification`
-              ],
+              queries: Array.from(
+                new Set([
+                  ...(webSearchQueries || []),
+                  ...(searchOutput.queriesRun || []),
+                ])
+              ).slice(0, 6),
               sources: combinedSources.map((s: any) => ({ title: s.name, uri: s.url || '' })),
             },
             extractedClaims: ragInput.extractedClaims,
@@ -899,7 +1022,7 @@ Return ONLY a valid JSON object in a \`\`\`json ... \`\`\` code fence with the f
     const updatedRecord: InvestigationRecord = {
       id,
       originalInput: userClaimText,
-      extractedText: ragInput.extractedClaims.join('\n') || userClaimText,
+      extractedText: ragInput.extractedClaims.map((c) => c.claim).join('\n') || userClaimText,
       inputType: (mode as any) || existing.inputType || 'text',
       verdict: finalDossier.verdict,
       clearVerdictStatus: finalDossier.clearVerdictStatus,
