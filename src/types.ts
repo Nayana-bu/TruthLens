@@ -20,6 +20,31 @@ export type ClearVerdictStatus =
   | 'UNVERIFIED'
   | 'CONTEXT_MISSING';
 
+export type NLILabel = 'ENTAILMENT' | 'CONTRADICTION' | 'NEUTRAL';
+
+export interface SemanticFrame {
+  actor?: string;
+  action?: string;
+  eventType?: string;
+  target?: string;
+  modality:
+    | 'completed_fact'
+    | 'ongoing_state'
+    | 'prospective_expectation'
+    | 'announcement_proposal'
+    | 'rumor_allegation'
+    | 'question'
+    | 'future_prediction'
+    | 'sarcasm_or_irony';
+  tense: 'past' | 'present' | 'future' | 'unknown';
+  polarity: 'affirmative' | 'negative';
+  cardinality?: number;
+  isExclusiveCardinality?: boolean;
+  location?: string;
+  timeframe?: string;
+  negatedElements?: string[];
+}
+
 export interface EvidenceSource {
   name: string;
   category: string;
@@ -28,8 +53,14 @@ export interface EvidenceSource {
   url?: string;
   timestamp?: string;
   publicationDate?: string;
+  retrievedAt?: string;
   isPrimary?: boolean;
   credibilityTier?: 'official_primary' | 'accredited_press' | 'factcheck_org' | 'secondary_web';
+  credibilityLabel?: string;
+  accessStatus?: 'accessible' | 'unaccessible' | 'partial';
+  nliLabel?: NLILabel;
+  nliConfidence?: number;
+  nliReason?: string;
   detailsTranslations?: {
     en?: string;
     kn?: string;
@@ -50,12 +81,18 @@ export interface EvidenceSource {
 export interface ExtractedClaim {
   id: string;
   claim: string;
+  subject?: string;
+  action?: string;
+  timeframe?: string;
+  claimType?: 'factual' | 'numerical' | 'quote' | 'prediction' | 'causal';
   category?: string;
   entities?: string[];
   dates?: string[];
   locations?: string[];
   organizations?: string[];
   amounts?: string[];
+  perspectiveQueries?: string[];
+  semanticFrame?: SemanticFrame;
   verdict?: VerdictType;
   clearVerdictStatus?: ClearVerdictStatus;
   statusLabel?: string;
@@ -66,8 +103,13 @@ export interface EvidencePoint {
   sourceName: string;
   url?: string;
   date?: string;
+  retrievedAt?: string;
+  credibilityLabel?: string;
   quoteOrExcerpt?: string;
   isPrimarySource?: boolean;
+  nliLabel?: NLILabel;
+  nliConfidence?: number;
+  nliReason?: string;
 }
 
 export type EvidenceStrengthRating =
@@ -82,11 +124,16 @@ export interface EvidenceAnalysis {
   criteriaScore: number;
   supportingEvidence: EvidencePoint[];
   contradictingEvidence: EvidencePoint[];
+  neutralEvidence?: EvidencePoint[];
   missingContext?: string[];
   limitationsAndUnresolved: string[];
   searchProviderStatus: 'operational' | 'fallback_archive' | 'error_reported';
   searchQueryCount: number;
   deduplicatedCount?: number;
+  irrelevantFilteredCount?: number;
+  cragIterations?: number;
+  cragTrace?: string[];
+  insufficiencyReason?: string;
 }
 
 export interface ClaimDossier {
@@ -98,6 +145,7 @@ export interface ClaimDossier {
   verdictSubtitle: string;
   confidenceScore: number;
   timeAgo: string;
+  verifiedAt?: string;
   category: 'phishing' | 'governance' | 'space' | 'weather' | 'health' | 'general';
   sourceEntity: string;
   languages: ('en' | 'kn' | 'hi')[];
@@ -144,6 +192,7 @@ export interface ClaimDossier {
     amounts?: string[];
     people?: string[];
   };
+  semanticFrame?: SemanticFrame;
   evidenceAnalysis?: EvidenceAnalysis;
   evidenceStrength?: string;
   submissionMode?: SubmissionMode;

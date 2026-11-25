@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ClaimDossier, Language } from '../types';
+import { ClaimDossier, EvidenceSource, Language } from '../types';
 import { VoiceVerdictPlayer } from './VoiceVerdictPlayer';
 import { ReportFakeNewsModal } from './ReportFakeNewsModal';
 import {
@@ -8,6 +8,45 @@ import {
   getSourceStatusLabel,
   getSourceDetails,
 } from '../utils/sourceTranslator';
+
+function isValidExternalUrl(url?: string): boolean {
+  if (!url) return false;
+  try {
+    const parsed = new URL(url.trim());
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+function formatDateTimeLabel(isoOrText?: string): string {
+  if (!isoOrText) return '';
+  const parsed = new Date(isoOrText);
+  if (Number.isNaN(parsed.getTime())) return isoOrText;
+  return parsed.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function getCredibilityBadgeText(src: EvidenceSource): string {
+  if (src.credibilityLabel) return src.credibilityLabel;
+  switch (src.credibilityTier) {
+    case 'official_primary':
+      return 'Official Govt / Primary';
+    case 'factcheck_org':
+      return 'IFCN Fact-Check / Reference';
+    case 'accredited_press':
+      return 'Accredited News Wire';
+    case 'secondary_web':
+      return 'Secondary Web Source';
+    default:
+      return src.isPrimary ? 'Primary Authority' : 'Retrieved Source';
+  }
+}
 
 interface InvestigationResultsPageProps {
   dossier: ClaimDossier;
@@ -67,7 +106,11 @@ export const InvestigationResultsPage: React.FC<InvestigationResultsPageProps> =
     if (isReal) {
       return activeLang === 'kn' ? '✅ TRUE NEWS (ಅಧಿಕೃತ ಸತ್ಯ)' : activeLang === 'hi' ? '✅ TRUE NEWS (सत्य खबर)' : '✅ TRUE NEWS';
     }
-    return activeLang === 'kn' ? '🔍 UNVERIFIED (ಅಪೂರ್ಣ ಮಾಹಿತಿ)' : activeLang === 'hi' ? '🔍 UNVERIFIED (अपुष्ट)' : '🔍 UNVERIFIED';
+    return activeLang === 'kn'
+      ? '🔍 VERIFICATION PENDING (ಪರಿಶೀಲನೆ ಬಾಕಿ)'
+      : activeLang === 'hi'
+      ? '🔍 VERIFICATION PENDING (सत्यापन लंबित)'
+      : '🔍 VERIFICATION PENDING';
   };
 
   const getVerdictTheme = () => {
@@ -268,7 +311,16 @@ export const InvestigationResultsPage: React.FC<InvestigationResultsPageProps> =
                   {/* Genuine Verification Timestamp */}
                   <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[#575960] bg-white/70 px-2 py-0.5 rounded border border-black/10">
                     <span className="material-symbols-outlined text-[13px]">schedule</span>
-                    <span>Verified: {dossier.timeAgo || 'Just verified'}</span>
+                    <span>
+                      {activeLang === 'kn'
+                        ? 'ಪರಿಶೀಲಿಸಿದ ಸಮಯ: '
+                        : activeLang === 'hi'
+                        ? 'सत्यापन समय: '
+                        : 'Last Verified: '}
+                      {dossier.verifiedAt
+                        ? formatDateTimeLabel(dossier.verifiedAt)
+                        : dossier.timeAgo || 'Just verified'}
+                    </span>
                   </span>
                   {dossier.officialRefId && (
                     <span className="text-[11px] font-mono text-[#575960] bg-white/70 px-2 py-0.5 rounded border border-black/10">
@@ -312,6 +364,32 @@ export const InvestigationResultsPage: React.FC<InvestigationResultsPageProps> =
             <p className="text-sm sm:text-base font-bold text-[#0b1c30] leading-snug">
               "{dossier.originalClaim || dossier.title}"
             </p>
+            {dossier.semanticFrame && (
+              <div className="mt-2 flex items-center gap-1.5 flex-wrap text-[10px]">
+                <span className="font-bold uppercase tracking-wider text-[#4059aa] bg-[#eff4ff] px-2 py-0.5 rounded border border-[#d3e4fe]">
+                  Semantic Frame
+                </span>
+                {dossier.semanticFrame.actor && (
+                  <span className="bg-[#f8fafc] text-[#334155] px-2 py-0.5 rounded border border-[#e2e8f0] font-semibold">
+                    Actor: {dossier.semanticFrame.actor}
+                  </span>
+                )}
+                {dossier.semanticFrame.eventType && (
+                  <span className="bg-[#f8fafc] text-[#334155] px-2 py-0.5 rounded border border-[#e2e8f0] font-semibold">
+                    Event: {dossier.semanticFrame.eventType.replace(/_/g, ' ')}
+                  </span>
+                )}
+                <span className="bg-[#f8fafc] text-[#334155] px-2 py-0.5 rounded border border-[#e2e8f0] font-semibold">
+                  Modality: {dossier.semanticFrame.modality.replace(/_/g, ' ')}
+                </span>
+                {dossier.semanticFrame.cardinality !== undefined && (
+                  <span className="bg-[#fef3c7] text-[#92400e] px-2 py-0.5 rounded border border-[#fde68a] font-semibold">
+                    Qty: {dossier.semanticFrame.cardinality}
+                    {dossier.semanticFrame.isExclusiveCardinality ? ' (exclusive)' : ' (non-exclusive)'}
+                  </span>
+                )}
+              </div>
+            )}
 
             {/* Extracted Sub-Claims & Factual Entities from RAG Pipeline */}
             {dossier.extractedClaims && dossier.extractedClaims.length > 0 && (
@@ -336,7 +414,17 @@ export const InvestigationResultsPage: React.FC<InvestigationResultsPageProps> =
                         <span className="font-bold text-[#4059aa] shrink-0">#{idx + 1}</span>
                         <span className="font-medium text-[#1e293b] leading-tight">{sub.claim}</span>
                       </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
+                      <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                        {sub.subject && (
+                          <span className="bg-[#eff4ff] text-[#4059aa] text-[10px] font-semibold px-1.5 py-0.5 rounded">
+                            {sub.subject}
+                          </span>
+                        )}
+                        {sub.timeframe && (
+                          <span className="bg-[#fef3c7] text-[#92400e] text-[10px] font-semibold px-1.5 py-0.5 rounded">
+                            {sub.timeframe}
+                          </span>
+                        )}
                         {sub.organizations && sub.organizations.length > 0 && (
                           <span className="bg-[#f1f5f9] text-[#475569] text-[10px] font-bold px-1.5 py-0.5 rounded">
                             {sub.organizations[0]}
@@ -409,10 +497,11 @@ export const InvestigationResultsPage: React.FC<InvestigationResultsPageProps> =
           </p>
         </div>
 
-        {/* Section: Supporting Evidence vs Contradicting Evidence (RAG Dual-Analysis) */}
+        {/* Section: Supporting Evidence vs Contradicting Evidence vs Neutral Context (RAG Multi-Stance Analysis) */}
         {dossier.evidenceAnalysis &&
           (dossier.evidenceAnalysis.supportingEvidence.length > 0 ||
-            dossier.evidenceAnalysis.contradictingEvidence.length > 0) && (
+            dossier.evidenceAnalysis.contradictingEvidence.length > 0 ||
+            (dossier.evidenceAnalysis.neutralEvidence?.length || 0) > 0) && (
             <div className="pb-4 border-b border-[#f1f5f9] flex flex-col gap-3">
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-[20px] text-[#4059aa]">
@@ -423,7 +512,7 @@ export const InvestigationResultsPage: React.FC<InvestigationResultsPageProps> =
                     ? 'ಸಾಕ್ಷ್ಯಾಧಾರಗಳ ವಿಶ್ಲೇಷಣೆ: ಬೆಂಬಲಿಸುವ vs ವಿರೋಧಿಸುವ ಸಾಕ್ಷ್ಯಗಳು'
                     : activeLang === 'hi'
                     ? 'साक्ष्य विश्लेषण: समर्थक बनाम विरोधी साक्ष्य'
-                    : 'Evidence Comparison: Supporting vs Contradicting Evidence'}
+                    : 'Evidence Comparison: Supporting, Contradicting & Neutral Records'}
                 </h3>
               </div>
 
@@ -454,10 +543,21 @@ export const InvestigationResultsPage: React.FC<InvestigationResultsPageProps> =
                     <div className="space-y-2">
                       {dossier.evidenceAnalysis.supportingEvidence.map((ev, i) => (
                         <div key={i} className="bg-white p-2.5 rounded-lg border border-[#a7f3d0]/60 text-xs">
+                          <div className="flex items-center justify-between gap-1.5 mb-1 flex-wrap">
+                            <span className="font-bold text-[#065f46] text-[11px]">{ev.sourceName}</span>
+                            {ev.nliLabel && (
+                              <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-[#ecfdf5] text-[#047857] border border-[#a7f3d0]">
+                                NLI: {ev.nliLabel}
+                              </span>
+                            )}
+                          </div>
                           <p className="font-medium text-[#065f46] leading-tight mb-1">{ev.point}</p>
+                          {ev.nliReason && (
+                            <p className="text-[10px] text-[#047857]/90 italic mb-1">{ev.nliReason}</p>
+                          )}
                           <div className="flex items-center justify-between text-[10px] text-[#059669] pt-1 border-t border-[#a7f3d0]/40 flex-wrap gap-1">
-                            <span className="font-bold">{ev.sourceName}</span>
-                            {ev.date && <span>Date: {ev.date}</span>}
+                            <span>{ev.credibilityLabel || 'Verified Source'}</span>
+                            {ev.date && <span>Published: {ev.date}</span>}
                           </div>
                         </div>
                       ))}
@@ -491,10 +591,21 @@ export const InvestigationResultsPage: React.FC<InvestigationResultsPageProps> =
                     <div className="space-y-2">
                       {dossier.evidenceAnalysis.contradictingEvidence.map((ev, i) => (
                         <div key={i} className="bg-white p-2.5 rounded-lg border border-[#fecdd3]/60 text-xs">
+                          <div className="flex items-center justify-between gap-1.5 mb-1 flex-wrap">
+                            <span className="font-bold text-[#9f1239] text-[11px]">{ev.sourceName}</span>
+                            {ev.nliLabel && (
+                              <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-[#fff1f2] text-[#be123c] border border-[#fecdd3]">
+                                NLI: {ev.nliLabel}
+                              </span>
+                            )}
+                          </div>
                           <p className="font-medium text-[#9f1239] leading-tight mb-1">{ev.point}</p>
+                          {ev.nliReason && (
+                            <p className="text-[10px] text-[#be123c]/90 italic mb-1">{ev.nliReason}</p>
+                          )}
                           <div className="flex items-center justify-between text-[10px] text-[#e11d48] pt-1 border-t border-[#fecdd3]/40 flex-wrap gap-1">
-                            <span className="font-bold">{ev.sourceName}</span>
-                            {ev.date && <span>Date: {ev.date}</span>}
+                            <span>{ev.credibilityLabel || 'Contradicting Record'}</span>
+                            {ev.date && <span>Published: {ev.date}</span>}
                           </div>
                         </div>
                       ))}
@@ -502,23 +613,75 @@ export const InvestigationResultsPage: React.FC<InvestigationResultsPageProps> =
                   )}
                 </div>
               </div>
+
+              {/* Neutral / Contextual Information Card */}
+              {dossier.evidenceAnalysis.neutralEvidence &&
+                dossier.evidenceAnalysis.neutralEvidence.length > 0 && (
+                  <div className="p-3.5 rounded-xl bg-[#f8fafc] border border-[#cbd5e1] flex flex-col gap-2">
+                    <span className="text-xs font-bold text-[#475569] flex items-center gap-1.5 uppercase">
+                      <span className="material-symbols-outlined text-[16px] text-[#64748b]">
+                        info
+                      </span>
+                      {activeLang === 'kn'
+                        ? `ತಟಸ್ಥ / ಪೂರಕ ಮಾಹಿತಿ (${dossier.evidenceAnalysis.neutralEvidence.length})`
+                        : activeLang === 'hi'
+                        ? `तटस्थ / संदर्भ जानकारी (${dossier.evidenceAnalysis.neutralEvidence.length})`
+                        : `Neutral Information & Contextual Records (${dossier.evidenceAnalysis.neutralEvidence.length})`}
+                    </span>
+                    <div className="space-y-2">
+                      {dossier.evidenceAnalysis.neutralEvidence.map((ev, i) => (
+                        <div key={i} className="bg-white p-2.5 rounded-lg border border-[#e2e8f0] text-xs">
+                          <div className="flex items-center justify-between gap-1.5 mb-1 flex-wrap">
+                            <span className="font-bold text-[#334155] text-[11px]">{ev.sourceName}</span>
+                            {ev.nliLabel && (
+                              <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-[#f1f5f9] text-[#475569] border border-[#cbd5e1]">
+                                NLI: {ev.nliLabel}
+                              </span>
+                            )}
+                          </div>
+                          <p className="font-medium text-[#334155] leading-tight mb-1">{ev.point}</p>
+                          {ev.nliReason && (
+                            <p className="text-[10px] text-[#64748b] italic mb-1">{ev.nliReason}</p>
+                          )}
+                          <div className="flex items-center justify-between text-[10px] text-[#64748b] pt-1 border-t border-[#f1f5f9] flex-wrap gap-1">
+                            <span>{ev.credibilityLabel || 'Contextual Record'}</span>
+                            {ev.date && <span>Published: {ev.date}</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
             </div>
           )}
 
-        {/* Section: Limitations and Unresolved Questions */}
-        {dossier.evidenceAnalysis?.limitationsAndUnresolved &&
-          dossier.evidenceAnalysis.limitationsAndUnresolved.length > 0 && (
-            <div className="p-3.5 rounded-xl bg-[#f8f9ff] border border-[#e5eeff] flex flex-col gap-1.5">
+        {/* Section: Limitations, CRAG Retrieval Trace and Unresolved Questions */}
+        {dossier.evidenceAnalysis &&
+          ((dossier.evidenceAnalysis.limitationsAndUnresolved &&
+            dossier.evidenceAnalysis.limitationsAndUnresolved.length > 0) ||
+            (dossier.evidenceAnalysis.missingContext &&
+              dossier.evidenceAnalysis.missingContext.length > 0) ||
+            (dossier.evidenceAnalysis.cragTrace &&
+              dossier.evidenceAnalysis.cragTrace.length > 0)) && (
+            <div className="p-3.5 rounded-xl bg-[#f8f9ff] border border-[#e5eeff] flex flex-col gap-2">
               <span className="text-xs font-bold text-[#4059aa] flex items-center gap-1.5 uppercase">
                 <span className="material-symbols-outlined text-[16px]">help_outline</span>
                 {activeLang === 'kn'
                   ? 'ಮಿತಿಗಳು ಮತ್ತು ಪರಿಹರಿಸಲಾಗದ ಪ್ರಶ್ನೆಗಳು (Investigation Limitations):'
                   : activeLang === 'hi'
                   ? 'जांच की सीमाएं एवं अनुत्तरित प्रश्न (Limitations):'
-                  : 'Investigation Limitations & Unresolved Questions:'}
+                  : 'Investigation Limitations & Retrieval Transparency:'}
               </span>
               <ul className="space-y-1 text-xs text-[#45464d]">
-                {dossier.evidenceAnalysis.limitationsAndUnresolved.map((item, idx) => (
+                {(dossier.evidenceAnalysis.missingContext || []).map((item, idx) => (
+                  <li key={`missing-${idx}`} className="flex items-start gap-1.5 font-medium text-[#92400e]">
+                    <span className="material-symbols-outlined text-[13px] text-[#d97706] mt-0.5 shrink-0">
+                      info
+                    </span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+                {(dossier.evidenceAnalysis.limitationsAndUnresolved || []).map((item, idx) => (
                   <li key={idx} className="flex items-start gap-1.5">
                     <span className="material-symbols-outlined text-[13px] text-[#4059aa] mt-0.5 shrink-0">
                       arrow_right
@@ -527,6 +690,24 @@ export const InvestigationResultsPage: React.FC<InvestigationResultsPageProps> =
                   </li>
                 ))}
               </ul>
+              {dossier.evidenceAnalysis.cragTrace && dossier.evidenceAnalysis.cragTrace.length > 0 && (
+                <div className="mt-1 pt-2 border-t border-[#e5eeff] text-[11px] text-[#575960]">
+                  <span className="font-bold text-[#4059aa] block mb-1">
+                    Corrective RAG (CRAG) Iterative Investigation ({dossier.evidenceAnalysis.cragIterations || dossier.evidenceAnalysis.cragTrace.length} pass(es)
+                    {typeof dossier.evidenceAnalysis.irrelevantFilteredCount === 'number' && dossier.evidenceAnalysis.irrelevantFilteredCount > 0
+                      ? ` • ${dossier.evidenceAnalysis.irrelevantFilteredCount} off-topic result(s) filtered`
+                      : ''}):
+                  </span>
+                  <ul className="space-y-0.5">
+                    {dossier.evidenceAnalysis.cragTrace.map((step, i) => (
+                      <li key={`crag-${i}`} className="flex items-start gap-1">
+                        <span className="text-[#4059aa] font-bold">•</span>
+                        <span>{step}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           )}
 
@@ -635,68 +816,107 @@ export const InvestigationResultsPage: React.FC<InvestigationResultsPageProps> =
           </div>
 
           <div className="space-y-2 mt-1">
-            {dossier.sources.map((src, idx) => (
-              <div
-                key={idx}
-                className="p-3.5 rounded-xl border border-[#e5eeff] bg-[#f8f9ff] flex flex-col gap-1.5 shadow-2xs"
-              >
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <span className="font-['Plus Jakarta Sans'] font-bold text-xs sm:text-sm text-[#0b1c30]">
-                    {getSourceName(src, activeLang)}
-                  </span>
-                  <span
-                    className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
-                      src.status === 'confirmed'
-                        ? 'bg-[#ecfdf5] text-[#059669]'
-                        : src.status === 'refuted'
-                        ? 'bg-[#fff1f2] text-[#e11d48]'
-                        : 'bg-[#f1f5f9] text-[#64748b]'
-                    }`}
-                  >
-                    {getSourceStatusLabel(src, activeLang)}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[11px] text-[#76777d] font-medium">
-                    {getSourceCategory(src, activeLang)}
-                  </span>
-                  {(src.publicationDate || src.timestamp) && (
-                    <span className="text-[10px] text-[#575960] bg-white px-2 py-0.5 rounded border border-black/5 font-medium flex items-center gap-1">
-                      <span className="material-symbols-outlined text-[11px] text-[#76777d]">calendar_today</span>
-                      <span>{src.publicationDate || src.timestamp}</span>
+            {dossier.sources.map((src, idx) => {
+              const hasAccessibleUrl = isValidExternalUrl(src.url) && src.accessStatus !== 'unaccessible';
+              const credibilityBadge = getCredibilityBadgeText(src);
+              return (
+                <div
+                  key={idx}
+                  className="p-3.5 rounded-xl border border-[#e5eeff] bg-[#f8f9ff] flex flex-col gap-1.5 shadow-2xs"
+                >
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className="font-['Plus Jakarta Sans'] font-bold text-xs sm:text-sm text-[#0b1c30]">
+                      {getSourceName(src, activeLang)}
                     </span>
-                  )}
-                  {src.isPrimary && (
+                    <span
+                      className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                        src.status === 'confirmed' || src.status === 'corroborated'
+                          ? 'bg-[#ecfdf5] text-[#059669]'
+                          : src.status === 'refuted' || src.status === 'contradicted'
+                          ? 'bg-[#fff1f2] text-[#e11d48]'
+                          : 'bg-[#f1f5f9] text-[#64748b]'
+                      }`}
+                    >
+                      {getSourceStatusLabel(src, activeLang)}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[11px] text-[#76777d] font-medium">
+                      {getSourceCategory(src, activeLang)}
+                    </span>
                     <span className="text-[10px] text-[#1d4ed8] bg-[#eff6ff] px-2 py-0.5 rounded border border-[#bfdbfe] font-bold flex items-center gap-1">
-                      <span className="material-symbols-outlined text-[11px] text-[#1d4ed8]">verified</span>
-                      <span>Primary Authority</span>
+                      <span className="material-symbols-outlined text-[11px] text-[#1d4ed8]">
+                        {src.isPrimary ? 'verified' : 'public'}
+                      </span>
+                      <span>{credibilityBadge}</span>
+                    </span>
+                    {src.nliLabel && (
+                      <span
+                        className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${
+                          src.nliLabel === 'ENTAILMENT'
+                            ? 'bg-[#ecfdf5] text-[#047857] border-[#a7f3d0]'
+                            : src.nliLabel === 'CONTRADICTION'
+                            ? 'bg-[#fff1f2] text-[#be123c] border-[#fecdd3]'
+                            : 'bg-[#f1f5f9] text-[#475569] border-[#cbd5e1]'
+                        }`}
+                      >
+                        NLI: {src.nliLabel}
+                      </span>
+                    )}
+                    {(src.publicationDate || src.timestamp) && (
+                      <span className="text-[10px] text-[#575960] bg-white px-2 py-0.5 rounded border border-black/5 font-medium flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[11px] text-[#76777d]">calendar_today</span>
+                        <span>Published: {src.publicationDate || src.timestamp}</span>
+                      </span>
+                    )}
+                    {src.retrievedAt && (
+                      <span className="text-[10px] text-[#575960] bg-white px-2 py-0.5 rounded border border-black/5 font-medium flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[11px] text-[#76777d]">history</span>
+                        <span>Retrieved: {formatDateTimeLabel(src.retrievedAt)}</span>
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-[#45464d] leading-relaxed">
+                    {getSourceDetails(src, activeLang)}
+                  </p>
+                  {src.nliReason && (
+                    <p className="text-[11px] text-[#575960] italic">
+                      NLI Reasoning: {src.nliReason}
+                    </p>
+                  )}
+
+                  {hasAccessibleUrl && src.url ? (
+                    <a
+                      href={src.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] text-[#4059aa] font-semibold hover:underline flex items-center gap-1 mt-0.5 self-start"
+                    >
+                      <span className="material-symbols-outlined text-[13px]">open_in_new</span>
+                      <span>
+                        {activeLang === 'kn'
+                          ? 'ಅಧಿಕೃತ ಮೂಲ ಅಥವಾ ದಾಖಲೆ ವೀಕ್ಷಿಸಿ'
+                          : activeLang === 'hi'
+                          ? 'आधिकारिक स्रोत पोर्टल पर जाएं'
+                          : 'Inspect official primary source portal'}
+                      </span>
+                    </a>
+                  ) : (
+                    <span className="text-[11px] text-[#64748b] font-medium flex items-center gap-1 mt-0.5">
+                      <span className="material-symbols-outlined text-[13px]">link_off</span>
+                      <span>
+                        {activeLang === 'kn'
+                          ? 'ನೇರ ಲಿಂಕ್ ಲಭ್ಯವಿಲ್ಲ / ಪ್ರವೇಶಿಸಲಾಗುವುದಿಲ್ಲ'
+                          : activeLang === 'hi'
+                          ? 'सीधा सार्वजनिक लिंक अनुपलब्ध'
+                          : 'Direct source URL unaccessible or unavailable'}
+                      </span>
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-[#45464d] leading-relaxed">
-                  {getSourceDetails(src, activeLang)}
-                </p>
-
-                {src.url && (
-                  <a
-                    href={src.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-[11px] text-[#4059aa] font-semibold hover:underline flex items-center gap-1 mt-0.5 self-start"
-                  >
-                    <span className="material-symbols-outlined text-[13px]">open_in_new</span>
-                    <span>
-                      {activeLang === 'kn'
-                        ? 'ಅಧಿಕೃತ ಮೂಲ ಅಥವಾ ದಾಖಲೆ ವೀಕ್ಷಿಸಿ'
-                        : activeLang === 'hi'
-                        ? 'आधिकारिक स्रोत पोर्टल पर जाएं'
-                        : 'Inspect official primary source portal'}
-                    </span>
-                  </a>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 

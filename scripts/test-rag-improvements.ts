@@ -148,7 +148,7 @@ async function runTests() {
     assert.equal(dossier.clearVerdictStatus, 'FAKE');
   });
 
-  await testCase('B3. Conflicting evidence handled properly -> PARTLY_TRUE & preserves both sides', () => {
+  await testCase('B3. Conflicting evidence handled properly -> Verification Pending (unverified) & preserves both sides', () => {
     const prep = preprocessQuery('RBI revised digital UPI fee limit to 1 percent for merchants');
     const mockConflicting: SearchResultItem[] = [
       {
@@ -177,7 +177,7 @@ async function runTests() {
       },
     ];
     const evalRes = evaluateEvidenceForVerdict(prep, mockConflicting, 'operational');
-    assert.equal(evalRes.recommendedVerdict, 'partly_true');
+    assert.equal(evalRes.recommendedVerdict, 'unverified');
     assert.equal(evalRes.hasConflict, true);
     const ctx = aggregateEvidenceContext(mockConflicting, prep.extractedClaims, 'RBI / NPCI', prep);
     assert.ok(ctx.includes('Polarity: CONTRADICTS'));
@@ -260,9 +260,15 @@ async function runTests() {
     assert.equal(dossier.clearVerdictStatus, 'REAL');
   });
 
-  await testCase('C6. Negated Kannada & Hindi claims return FAKE (not REAL)', async () => {
-    const knFalse = analyzeClaimText('ನರೇಂದ್ರ ಮೋದಿ ಭಾರತದ ಪ್ರಧಾನಿ ಅಲ್ಲ');
-    const hiFalse = analyzeClaimText('नरेंद्र मोदी भारत के प्रधानमंत्री नहीं हैं');
+  await testCase('C6. Negated Kannada & Hindi claims evaluated with live RAG return FAKE (not REAL)', async () => {
+    const knQuery = 'ನರೇಂದ್ರ ಮೋದಿ ಭಾರತದ ಪ್ರಧಾನಿ ಅಲ್ಲ';
+    const hiQuery = 'नरेंद्र मोदी भारत के प्रधानमंत्री नहीं हैं';
+    const knPrep = preprocessQuery(knQuery);
+    const hiPrep = preprocessQuery(hiQuery);
+    const knSearch = await executeMultiQuerySearch(knPrep.extractedClaims, knPrep.entities, knQuery, knPrep);
+    const hiSearch = await executeMultiQuerySearch(hiPrep.extractedClaims, hiPrep.entities, hiQuery, hiPrep);
+    const knFalse = analyzeClaimText(knQuery, 'text', undefined, undefined, knSearch.results);
+    const hiFalse = analyzeClaimText(hiQuery, 'text', undefined, undefined, hiSearch.results);
     assert.equal(knFalse.verdict, 'false');
     assert.equal(knFalse.clearVerdictStatus, 'FAKE');
     assert.equal(hiFalse.verdict, 'false');
@@ -342,10 +348,12 @@ async function runTests() {
     assert.notEqual(dossierFalse.verdict, 'verified_true');
   });
 
-  await testCase('C12. Diverse general REAL vs FAKE claims across tech roles, space years, sports medals, health hoaxes, currency, and governance', async () => {
+  await testCase('C12. Diverse general TRUE NEWS vs FALSE NEWS vs Verification Pending claims across roles, dates, medals, health hoaxes, and currency', async () => {
     const generalCases: { claim: string; expected: 'REAL' | 'FAKE' | 'UNVERIFIED' }[] = [
       { claim: 'ISRO Chandrayaan-3 successfully landed near the lunar south pole in August 2023', expected: 'REAL' },
       { claim: 'Chandrayaan-3 landed on the Moon in 2021', expected: 'FAKE' },
+      { claim: 'Donald Trump is the current President of the United States', expected: 'REAL' },
+      { claim: 'Joe Biden is the current President of the United States', expected: 'FAKE' },
       { claim: 'Sundar Pichai is the CEO of Apple', expected: 'FAKE' },
       { claim: 'Neeraj Chopra won silver medal at Paris Olympics 2024', expected: 'REAL' },
       { claim: 'Neeraj Chopra won gold medal at Paris Olympics 2024', expected: 'FAKE' },
@@ -364,6 +372,35 @@ async function runTests() {
       console.log(`   -> [${c.expected}] got ${dossier.clearVerdictStatus} (${dossier.confidenceScore}%): "${c.claim.slice(0, 62)}"`);
       assert.equal(dossier.clearVerdictStatus, c.expected, `Expected ${c.expected} for "${c.claim}", got ${dossier.clearVerdictStatus}`);
     }
+
+    // Also verify unrelated debunk guard: "Elon Musk bought Google" must NEVER return REAL or be refuted by unrelated Starlink fact-check
+    const muskGoogle = 'Elon Musk bought Google';
+    const muskPrep = preprocessQuery(muskGoogle);
+    const muskSearch = await executeMultiQuerySearch(muskPrep.extractedClaims, muskPrep.entities, muskGoogle, muskPrep);
+    const muskDossier = analyzeClaimText(muskGoogle, 'text', undefined, undefined, muskSearch.results);
+    console.log(`   -> [NOT REAL] got ${muskDossier.clearVerdictStatus} (${muskDossier.confidenceScore}%): "${muskGoogle}"`);
+    assert.notEqual(muskDossier.clearVerdictStatus, 'REAL', '"Elon Musk bought Google" must never be marked TRUE NEWS');
+  });
+
+  await testCase('C13. Multi-sentence foreign-leader diplomatic news preserves proper nouns (Balendra Shah) & distinguishes TRUE vs mutated $5.6B FAKE', async () => {
+    const trueClaim = "India-Nepal Ties: India pledged $1.6 billion in flood relief for Nepal during Nepal Prime Minister Balendra Shah's visit to meet Prime Minister Narendra Modi. Leaders also flagged off a direct Ayodhya–Janakpur train link ahead of operations starting November 28";
+    const prepTrue = preprocessQuery(trueClaim);
+    assert.ok(
+      !prepTrue.correctionsApplied.some((c) => c.from === 'Balendra'),
+      'Proper noun "Balendra" must never be spell-corrupted'
+    );
+    assert.ok(prepTrue.entities.people.some((p) => p.includes('Balendra')), 'Should extract Balendra Shah');
+    const searchTrue = await executeMultiQuerySearch(prepTrue.extractedClaims, prepTrue.entities, trueClaim, prepTrue);
+    const dossierTrue = analyzeClaimText(trueClaim, 'text', undefined, undefined, searchTrue.results);
+    console.log(`   -> True India-Nepal => ${dossierTrue.verdict} (${dossierTrue.clearVerdictStatus}, ${dossierTrue.confidenceScore}%)`);
+    assert.equal(dossierTrue.clearVerdictStatus, 'REAL');
+
+    const fakeAmountClaim = "India-Nepal Ties: India pledged $5.6 billion in flood relief for Nepal during Nepal Prime Minister Balendra Shah's visit to meet Prime Minister Narendra Modi. Leaders also flagged off a direct Ayodhya–Janakpur train link ahead of operations starting November 28";
+    const prepFake = preprocessQuery(fakeAmountClaim);
+    const searchFake = await executeMultiQuerySearch(prepFake.extractedClaims, prepFake.entities, fakeAmountClaim, prepFake);
+    const dossierFake = analyzeClaimText(fakeAmountClaim, 'text', undefined, undefined, searchFake.results);
+    console.log(`   -> Mutated $5.6B India-Nepal => ${dossierFake.verdict} (${dossierFake.clearVerdictStatus}, ${dossierFake.confidenceScore}%)`);
+    assert.equal(dossierFake.clearVerdictStatus, 'FAKE');
   });
 
   console.log('\n====================================================================');

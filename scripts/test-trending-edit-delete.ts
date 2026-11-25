@@ -12,6 +12,7 @@ import {
   type InvestigationRecord,
 } from '../src/db/investigationsDb.ts';
 import { analyzeClaimText } from '../src/utils/claimAnalyzer.ts';
+import { preprocessQuery, executeMultiQuerySearch } from '../src/utils/ragEngine.ts';
 import fs from 'fs';
 import path from 'path';
 
@@ -116,7 +117,9 @@ async function runTests() {
     // Scenario 3: Save valid edit with real re-investigation
     console.log('\n▶ TEST 3: Save valid edit triggers re-verification & updates verdict/explanation');
     const editedClaim = 'ISRO Aditya-L1 spacecraft successfully entered halo orbit around L1 point';
-    const reInvestigatedDossier = analyzeClaimText(editedClaim);
+    const prepEdit = preprocessQuery(editedClaim);
+    const searchEdit = await executeMultiQuerySearch(prepEdit.extractedClaims, prepEdit.entities, editedClaim, prepEdit);
+    const reInvestigatedDossier = analyzeClaimText(editedClaim, 'text', undefined, undefined, searchEdit.results);
     reInvestigatedDossier.id = 'TL-TEST-CARD-1'; // Preserved ID
 
     const updatedRecord: InvestigationRecord = {

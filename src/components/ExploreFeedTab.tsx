@@ -29,12 +29,9 @@ export const ExploreFeedTab: React.FC<ExploreFeedTabProps> = ({
 
   const verdicts = [
     { id: 'all', label: 'All Verdicts' },
-    { id: 'verified_true', label: 'Verified True' },
-    { id: 'false', label: 'False Claims' },
-    { id: 'misleading', label: 'Misleading' },
-    { id: 'partly_true', label: 'Partly True' },
-    { id: 'unverified', label: 'Unverified' },
-    { id: 'context_missing', label: 'Context Missing' },
+    { id: 'verified_true', label: 'True News' },
+    { id: 'false', label: 'False News' },
+    { id: 'unverified', label: 'Verification Pending' },
   ];
 
   const filtered = dossiersList.filter((item) => {

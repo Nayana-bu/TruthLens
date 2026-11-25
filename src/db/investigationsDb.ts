@@ -165,7 +165,7 @@ export async function listInvestigations(filters?: {
         (v === 'true' && (r.verdict === 'verified_true' || r.clearVerdictStatus === 'REAL')) ||
         (v === 'misleading' && (r.verdict === 'misleading' || r.clearVerdictStatus === 'MISLEADING')) ||
         (v === 'partly' && (r.verdict === 'partly_true' || r.clearVerdictStatus === 'PARTLY_TRUE')) ||
-        (v === 'unverified' && (r.verdict === 'unverified' || r.clearVerdictStatus === 'UNVERIFIED')) ||
+        (v === 'unverified' || v === 'pending' ? (r.verdict === 'unverified' || r.clearVerdictStatus === 'UNVERIFIED') : false) ||
         (v === 'context' && (r.verdict === 'context_missing' || r.clearVerdictStatus === 'CONTEXT_MISSING'))
     );
   }

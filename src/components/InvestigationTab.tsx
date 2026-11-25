@@ -107,7 +107,7 @@ export const InvestigationTab: React.FC<InvestigationTabProps> = ({
 
     if (isFake) {
       return {
-        label: 'FAKE',
+        label: 'FALSE NEWS',
         bg: 'bg-[#fee2e2]',
         text: 'text-[#dc2626]',
         icon: 'cancel',
@@ -139,14 +139,14 @@ export const InvestigationTab: React.FC<InvestigationTabProps> = ({
     }
     if (isTrue) {
       return {
-        label: 'VERIFIED TRUE',
+        label: 'TRUE NEWS',
         bg: 'bg-[#dcfce7]',
         text: 'text-[#16a34a]',
         icon: 'check_circle',
       };
     }
     return {
-      label: 'UNVERIFIED',
+      label: 'VERIFICATION PENDING',
       bg: 'bg-[#f1f5f9]',
       text: 'text-[#475569]',
       icon: 'help',
@@ -232,13 +232,13 @@ export const InvestigationTab: React.FC<InvestigationTabProps> = ({
 
         <div className="bg-white p-3.5 rounded-xl border border-[#e2e8f0] shadow-xs flex flex-col">
           <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">
-            {activeLang === 'kn' ? 'ದಾರಿತಪ್ಪಿಸುವ / ಅಪುಷ್ಟ' : activeLang === 'hi' ? 'भ्रामक / अपुष्ट' : 'Misleading / Unverified'}
+            {activeLang === 'kn' ? 'ಪರಿಶೀಲನೆ ಬಾಕಿ' : activeLang === 'hi' ? 'सत्यापन लंबित' : 'Verification Pending'}
           </span>
           <span className="text-xl font-extrabold text-[#d97706] mt-0.5 font-['Plus_Jakarta_Sans']">
-            {((statistics?.misleadingPercent ?? 0) + (statistics?.unverifiedPercent ?? 0)).toFixed(1)}%
+            {((statistics?.misleadingPercent ?? 0) + (statistics?.unverifiedPercent ?? 0) + (statistics?.partlyTruePercent ?? 0) + (statistics?.contextMissingPercent ?? 0)).toFixed(1)}%
           </span>
           <span className="text-[10px] text-[#d97706] font-medium mt-0.5">
-            {(statistics?.misleadingCount ?? 0) + (statistics?.unverifiedCount ?? 0)} cases
+            {(statistics?.misleadingCount ?? 0) + (statistics?.unverifiedCount ?? 0) + (statistics?.partlyTrueCount ?? 0) + (statistics?.contextMissingCount ?? 0)} cases
           </span>
         </div>
       </div>
@@ -278,12 +278,9 @@ export const InvestigationTab: React.FC<InvestigationTabProps> = ({
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
           {[
             { id: 'all', label: 'All Records' },
-            { id: 'true', label: 'Verified True' },
-            { id: 'fake', label: 'Fake' },
-            { id: 'misleading', label: 'Misleading' },
-            { id: 'partly', label: 'Partly True' },
-            { id: 'context', label: 'Context Missing' },
-            { id: 'unverified', label: 'Unverified' },
+            { id: 'true', label: 'True News' },
+            { id: 'fake', label: 'False News' },
+            { id: 'unverified', label: 'Verification Pending' },
           ].map((pill) => (
             <button
               key={pill.id}

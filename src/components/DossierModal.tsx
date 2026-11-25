@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ClaimDossier, Language } from '../types';
+import { ClaimDossier, EvidenceSource, Language } from '../types';
 import { UI_TRANSLATIONS } from '../data/mockData';
 import { ReportFakeNewsModal } from './ReportFakeNewsModal';
 import { speakText, stopSpeech } from '../utils/speechEngine';
@@ -12,6 +12,38 @@ import {
   getRecordCorroborationTitle,
   getPrimarySourceActionLabel,
 } from '../utils/sourceTranslator';
+
+function isValidExternalUrl(url?: string): boolean {
+  if (!url) return false;
+  try {
+    const parsed = new URL(url.trim());
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+function formatDateTimeLabel(isoOrText?: string): string {
+  if (!isoOrText) return '';
+  const parsed = new Date(isoOrText);
+  if (Number.isNaN(parsed.getTime())) return isoOrText;
+  return parsed.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function getCredibilityLabel(src: EvidenceSource): string {
+  if (src.credibilityLabel) return src.credibilityLabel;
+  if (src.credibilityTier === 'official_primary') return 'Official Govt / Primary';
+  if (src.credibilityTier === 'factcheck_org') return 'IFCN Fact-Check / Reference';
+  if (src.credibilityTier === 'accredited_press') return 'Accredited Press';
+  if (src.credibilityTier === 'secondary_web') return 'Secondary Web';
+  return src.isPrimary ? 'Primary Authority' : 'Retrieved Source';
+}
 
 interface DossierModalProps {
   dossier: ClaimDossier | null;
@@ -173,11 +205,18 @@ export const DossierModal: React.FC<DossierModalProps> = ({
               <h2 className="font-['Plus Jakarta Sans'] font-bold text-base sm:text-lg text-[#0b1c30] leading-snug">
                 {t.dossierModalTitle}
               </h2>
-              {dossier.officialRefId && (
-                <span className="text-[11px] font-mono text-[#76777d]">
-                  Ref: {dossier.officialRefId}
-                </span>
-              )}
+              <div className="flex items-center gap-2 flex-wrap">
+                {dossier.officialRefId && (
+                  <span className="text-[11px] font-mono text-[#76777d]">
+                    Ref: {dossier.officialRefId}
+                  </span>
+                )}
+                {(dossier.verifiedAt || dossier.timeAgo) && (
+                  <span className="text-[11px] text-[#575960]">
+                    • Verified: {dossier.verifiedAt ? formatDateTimeLabel(dossier.verifiedAt) : dossier.timeAgo}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -235,7 +274,7 @@ export const DossierModal: React.FC<DossierModalProps> = ({
                       className={`font-['Plus Jakarta Sans'] font-black text-xl sm:text-2xl tracking-tight uppercase px-3.5 py-1 rounded-xl shadow-sm ${getHeaderBadgeClass()}`}
                     >
                       {isFake
-                        ? '❌ FAKE NEWS'
+                        ? '❌ FALSE NEWS'
                         : isMisleading
                         ? '⚠️ MISLEADING'
                         : isPartly
@@ -243,8 +282,8 @@ export const DossierModal: React.FC<DossierModalProps> = ({
                         : isContext
                         ? 'ℹ️ CONTEXT MISSING'
                         : isReal
-                        ? '✅ REAL & VERIFIED'
-                        : '🔍 UNVERIFIED'}
+                        ? '✅ TRUE NEWS'
+                        : '🔍 VERIFICATION PENDING'}
                     </span>
 
                     <span className="font-['Noto_Sans_Kannada'] font-bold text-sm sm:text-base px-2.5 py-0.5 rounded-full bg-white/90 border border-current shadow-2xs">
@@ -257,8 +296,8 @@ export const DossierModal: React.FC<DossierModalProps> = ({
                         : isContext
                         ? 'ಸಂದರ್ಭದ ಕೊರತೆ'
                         : isReal
-                        ? 'ಅಧಿಕೃತ ಸತ್ಯ'
-                        : 'ದೃಢೀಕರಿಸಲಾಗಿಲ್ಲ'}
+                        ? 'ಸತ್ಯ ಸುದ್ದಿ'
+                        : 'ಪರಿಶೀಲನೆ ಬಾಕಿ'}
                     </span>
 
                     <span className="font-['Noto_Sans_Devanagari'] font-bold text-sm sm:text-base px-2.5 py-0.5 rounded-full bg-white/90 border border-current shadow-2xs">
@@ -272,7 +311,7 @@ export const DossierModal: React.FC<DossierModalProps> = ({
                         ? 'संदर्भ का अभाव'
                         : isReal
                         ? 'सत्य खबर'
-                        : 'अपुष्ट दावा'}
+                        : 'सत्यापन लंबित'}
                     </span>
                   </div>
 
@@ -280,7 +319,7 @@ export const DossierModal: React.FC<DossierModalProps> = ({
                   <p className="font-['Plus Jakarta Sans'] font-bold text-sm sm:text-base mt-2 text-[#0b1c30] leading-snug">
                     {selectedLang === 'kn' ? (
                       isFake
-                        ? '🚨 ಎಚ್ಚರಿಕೆ: ಈ ಸುದ್ದಿ ಸಂಪೂರ್ಣ ಸುಳ್ಳಾಗಿದೆ. ಯಾವುದೇ ಲಿಂಕ್ ಕ್ಲಿಕ್ ಮಾಡಬೇಡಿ ಅಥವಾ ಫಾರ್ವರ್ಡ್ ಮಾಡಬೇಡಿ.'
+                        ? '🚨 ಎಚ್ಚರಿಕೆ: ಈ ಸುದ್ದಿ ಸುಳ್ಳಾಗಿದೆ. ಯಾವುದೇ ಲಿಂಕ್ ಕ್ಲಿಕ್ ಮಾಡಬೇಡಿ ಅಥವಾ ಫಾರ್ವರ್ಡ್ ಮಾಡಬೇಡಿ.'
                         : isMisleading
                         ? '⚠️ ಎಚ್ಚರಿಕೆ: ಹಳೆಯ ಅಥವಾ ತಿರುಚಿದ ಮಾಹಿತಿಯನ್ನು ಪ್ರಸ್ತುತ ಸುದ್ದಿ ಎಂದು ತಪ್ಪಾಗಿ ಹಂಚಿಕೊಳ್ಳಲಾಗುತ್ತಿದೆ.'
                         : isPartly
@@ -288,11 +327,11 @@ export const DossierModal: React.FC<DossierModalProps> = ({
                         : isContext
                         ? 'ℹ️ ಗಮನಿಸಿ: ಮಾಹಿತಿಯು ತಾಂತ್ರಿಕವಾಗಿ ಸರಿಯಾಗಿದ್ದರೂ, ಅಗತ್ಯ ಸಂದರ್ಭವನ್ನು ಮರೆಮಾಚಲಾಗಿದೆ.'
                         : isReal
-                        ? '✅ ಅಧಿಕೃತ ದೃಢೀಕರಣ: ಸರ್ಕಾರಿ ಗೆಜೆಟ್ ಮತ್ತು ಪ್ರಾಥಮಿಕ ದಾಖಲೆಗಳಿಂದ ಸಾಬೀತಾದ ಸತ್ಯ.'
-                        : '🔍 ಗಮನಿಸಿ: ಸಾರ್ವಜನಿಕವಾಗಿ ಯಾವುದೇ ಅಧಿಕೃತ ಸಾಕ್ಷ್ಯ ಅಥವಾ ಖಂಡನೆ ಸಿಕ್ಕಿಲ್ಲ; ಇದು ದೃಢೀಕರಿಸಲಾಗಿಲ್ಲ (Unverified).'
+                        ? '✅ ದೃಢೀಕೃತ ಸತ್ಯ ಸುದ್ದಿ: ವಿಶ್ವಾಸಾರ್ಹ ದಾಖಲೆಗಳಿಂದ ಸಾಬೀತಾದ ಸತ್ಯ.'
+                        : '🔍 ಪರಿಶೀಲನೆ ಬಾಕಿ: ನಿರ್ಣಾಯಕ ಸಾಕ್ಷ್ಯಗಳು ಲಭ್ಯವಾಗುವವರೆಗೆ ಅಥವಾ ವಿರೋಧಾಭಾಸ ಬಗೆಹರಿಯುವವರೆಗೆ ಪರಿಶೀಲನೆ ಬಾಕಿ ಇದೆ.'
                     ) : selectedLang === 'hi' ? (
                       isFake
-                        ? '🚨 चेतावनी: यह दावा पूरी तरह फर्जी है। कृपया इसे आगे फॉरवर्ड न करें या लिंक न खोलें।'
+                        ? '🚨 चेतावनी: यह खबर फर्जी है। विश्वसनीय साक्ष्य इसका खंडन करते हैं।'
                         : isMisleading
                         ? '⚠️ सावधानी: पुरानी या अधूरी जानकारी को गलत संदर्भ में प्रस्तुत किया जा रहा है।'
                         : isPartly
@@ -300,11 +339,11 @@ export const DossierModal: React.FC<DossierModalProps> = ({
                         : isContext
                         ? 'ℹ️ ध्यान दें: महत्वपूर्ण संदर्भ गायब होने से भ्रामक धारणा उत्पन्न हो सकती है।'
                         : isReal
-                        ? '✅ आधिकारिक पुष्टि: सरकारी राजपत्र एवं प्राथमिक अभिलेखों द्वारा प्रमाणित सत्य।'
-                        : '🔍 ध्यान दें: साक्ष्य के अभाव में यह दावा अपुष्ट (Unverified) है।'
+                        ? '✅ सत्यापित सत्य खबर: विश्वसनीय अभिलेखों द्वारा प्रमाणित सत्य।'
+                        : '🔍 सत्यापन लंबित: पर्याप्त या निर्णायक साक्ष्य के अभाव में सत्यापन लंबित है।'
                     ) : (
                       isFake
-                        ? '🚨 WARNING: This claim is completely FALSE. Contradicted by official records.'
+                        ? '🚨 FALSE NEWS: Contradicted by credible retrieved evidence.'
                         : isMisleading
                         ? '⚠️ CAUTION: Outdated or manipulated information presented without correct context.'
                         : isPartly
@@ -312,8 +351,8 @@ export const DossierModal: React.FC<DossierModalProps> = ({
                         : isContext
                         ? 'ℹ️ NOTICE: Technically accurate statements lacking crucial qualifying background.'
                         : isReal
-                        ? '✅ CONFIRMED: Backed by primary official records and government gazettes.'
-                        : '🔍 UNVERIFIED: Insufficient public evidence exists to confirm or disprove this claim.'
+                        ? '✅ TRUE NEWS: Corroborated by credible retrieved records and primary sources.'
+                        : '🔍 VERIFICATION PENDING: Credible evidence is insufficient or conflicting to determine True or False.'
                     )}
                   </p>
                 </div>
@@ -474,6 +513,23 @@ export const DossierModal: React.FC<DossierModalProps> = ({
             <p className="text-sm font-medium text-[#0b1c30] italic bg-white p-3 rounded-lg border border-[#e5eeff]">
               "{dossier.originalClaim}"
             </p>
+            {dossier.semanticFrame && (
+              <div className="mt-2 flex items-center gap-1.5 flex-wrap text-[10px]">
+                {dossier.semanticFrame.actor && (
+                  <span className="bg-white text-[#334155] px-2 py-0.5 rounded border border-[#e5eeff] font-semibold">
+                    Actor: {dossier.semanticFrame.actor}
+                  </span>
+                )}
+                {dossier.semanticFrame.eventType && (
+                  <span className="bg-white text-[#334155] px-2 py-0.5 rounded border border-[#e5eeff] font-semibold">
+                    Event: {dossier.semanticFrame.eventType.replace(/_/g, ' ')}
+                  </span>
+                )}
+                <span className="bg-white text-[#334155] px-2 py-0.5 rounded border border-[#e5eeff] font-semibold">
+                  Modality: {dossier.semanticFrame.modality.replace(/_/g, ' ')}
+                </span>
+              </div>
+            )}
             <div className="flex items-center justify-between mt-2 text-[11px] text-[#76777d]">
               <span className="flex items-center gap-1">
                 <span className="material-symbols-outlined text-[14px]">cell_tower</span>
@@ -582,7 +638,9 @@ export const DossierModal: React.FC<DossierModalProps> = ({
                 const srcCategory = getSourceCategory(src, selectedLang);
                 const srcStatusLabel = getSourceStatusLabel(src.status, selectedLang);
                 const srcDetails = getSourceDetails(src, selectedLang);
-                const actionLabel = getPrimarySourceActionLabel(Boolean(src.url), srcName, selectedLang);
+                const hasAccessibleUrl = isValidExternalUrl(src.url) && src.accessStatus !== 'unaccessible';
+                const actionLabel = getPrimarySourceActionLabel(hasAccessibleUrl, srcName, selectedLang);
+                const credLabel = getCredibilityLabel(src);
 
                 return (
                   <div
@@ -597,7 +655,7 @@ export const DossierModal: React.FC<DossierModalProps> = ({
                         className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
                           src.status === 'confirmed' || src.status === 'corroborated'
                             ? 'bg-[#ecfdf5] text-[#059669]'
-                            : src.status === 'refuted'
+                            : src.status === 'refuted' || src.status === 'contradicted'
                             ? 'bg-[#fff1f2] text-[#e11d48]'
                             : 'bg-[#f1f5f9] text-[#64748b]'
                         }`}
@@ -605,7 +663,33 @@ export const DossierModal: React.FC<DossierModalProps> = ({
                         {srcStatusLabel}
                       </span>
                     </div>
-                    <span className="text-[11px] font-medium text-[#76777d]">{srcCategory}</span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[11px] font-medium text-[#76777d]">{srcCategory}</span>
+                      <span className="text-[10px] font-bold text-[#1d4ed8] bg-[#eff6ff] px-2 py-0.5 rounded border border-[#bfdbfe]">
+                        {credLabel}
+                      </span>
+                      {src.nliLabel && (
+                        <span
+                          className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${
+                            src.nliLabel === 'ENTAILMENT'
+                              ? 'bg-[#ecfdf5] text-[#047857] border-[#a7f3d0]'
+                              : src.nliLabel === 'CONTRADICTION'
+                              ? 'bg-[#fff1f2] text-[#be123c] border-[#fecdd3]'
+                              : 'bg-[#f1f5f9] text-[#475569] border-[#cbd5e1]'
+                          }`}
+                        >
+                          NLI: {src.nliLabel}
+                        </span>
+                      )}
+                      {src.publicationDate && (
+                        <span className="text-[10px] text-[#575960]">Published: {src.publicationDate}</span>
+                      )}
+                      {src.retrievedAt && (
+                        <span className="text-[10px] text-[#575960]">
+                          Retrieved: {formatDateTimeLabel(src.retrievedAt)}
+                        </span>
+                      )}
+                    </div>
                     <p
                       className={`text-xs text-[#334155] leading-relaxed ${
                         selectedLang === 'kn'
@@ -617,9 +701,14 @@ export const DossierModal: React.FC<DossierModalProps> = ({
                     >
                       {srcDetails}
                     </p>
+                    {src.nliReason && (
+                      <p className="text-[11px] text-[#575960] italic">
+                        NLI Reasoning: {src.nliReason}
+                      </p>
+                    )}
 
                     <div className="pt-1.5 flex items-center justify-between border-t border-[#f1f5f9] mt-0.5">
-                      {src.url ? (
+                      {hasAccessibleUrl && src.url ? (
                         <a
                           href={src.url}
                           target="_blank"
@@ -631,15 +720,10 @@ export const DossierModal: React.FC<DossierModalProps> = ({
                           <span className="material-symbols-outlined text-[13px]">launch</span>
                         </a>
                       ) : (
-                        <a
-                          href={`https://www.google.com/search?q=${encodeURIComponent(dossier.originalClaim + ' ' + src.name)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-[11px] font-medium text-[#1a73e8] hover:underline"
-                        >
-                          <span className="material-symbols-outlined text-[14px]">search</span>
-                          <span>{actionLabel}</span>
-                        </a>
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[#64748b]">
+                          <span className="material-symbols-outlined text-[14px]">link_off</span>
+                          <span>Unaccessible / No Public Link</span>
+                        </span>
                       )}
 
                       {src.timestamp && (

@@ -190,13 +190,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const getRegionalBadgeLabel = () => {
     if (!activeDossier) return '';
     if (isFake) {
-      return currentLang === 'kn' ? 'ಸುಳ್ಳು ಸುದ್ದಿ' : currentLang === 'hi' ? 'फर्जी खबर' : 'Debunked False';
+      return currentLang === 'kn' ? 'ಸುಳ್ಳು ಸುದ್ದಿ' : currentLang === 'hi' ? 'फर्जी खबर' : 'False News';
     }
     if (isMisleading) {
       return currentLang === 'kn' ? 'ದಾರಿತಪ್ಪಿಸುವ ಸುದ್ದಿ' : currentLang === 'hi' ? 'भ्रामक दावा' : 'Misleading Context';
     }
     if (isTrue) {
-      return currentLang === 'kn' ? 'ಅಧಿಕೃತ ಸತ್ಯ' : currentLang === 'hi' ? 'सत्यापित सत्य' : 'Verified Genuine';
+      return currentLang === 'kn' ? 'ಸತ್ಯ ಸುದ್ದಿ' : currentLang === 'hi' ? 'सत्य खबर' : 'True News';
     }
     if (isPartlyTrue) {
       return currentLang === 'kn' ? 'ಭಾಗಶಃ ಸತ್ಯ' : currentLang === 'hi' ? 'आंशिक सत्य' : 'Partially True';
@@ -204,7 +204,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     if (isContextMissing) {
       return currentLang === 'kn' ? 'ಸಂದರ್ಭದ ಕೊರತೆ' : currentLang === 'hi' ? 'संदर्भ का अभाव' : 'Missing Context';
     }
-    return currentLang === 'kn' ? 'ದೃಢೀಕರಿಸಲಾಗಿಲ್ಲ' : currentLang === 'hi' ? 'अपुष्ट दावा' : 'Pending Corroboration';
+    return currentLang === 'kn' ? 'ಪರಿಶೀಲನೆ ಬಾಕಿ' : currentLang === 'hi' ? 'सत्यापन लंबित' : 'Verification Pending';
   };
 
   return (
@@ -440,7 +440,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <>
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#dc2626] text-white font-['Plus_Jakarta_Sans'] font-extrabold text-xs tracking-wider uppercase shadow-xs">
                     <span className="material-symbols-outlined text-[15px]">cancel</span>
-                    <span>FAKE NEWS</span>
+                    <span>FALSE NEWS</span>
                   </span>
                   <span className="px-2.5 py-1 rounded-lg bg-[#fee2e2] text-[#b91c1c] text-xs font-bold">
                     {getRegionalBadgeLabel()}
@@ -490,7 +490,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <>
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#475569] text-white font-['Plus_Jakarta_Sans'] font-extrabold text-xs tracking-wider uppercase shadow-xs">
                     <span className="material-symbols-outlined text-[15px]">help</span>
-                    <span>UNVERIFIED</span>
+                    <span>VERIFICATION PENDING</span>
                   </span>
                   <span className="px-2.5 py-1 rounded-lg bg-[#f1f5f9] text-[#334155] text-xs font-bold">
                     {getRegionalBadgeLabel()}
@@ -511,7 +511,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     : 'bg-[#eff6ff] text-[#2563eb] border-[#bfdbfe]'
                 }`}>
                   {isUnverified
-                    ? (currentLang === 'kn' ? 'ಸಾಕ್ಷ್ಯಾಧಾರ ಅಪೂರ್ಣ' : currentLang === 'hi' ? 'अपुष्ट साक्ष्य' : 'Insufficient Evidence')
+                    ? (currentLang === 'kn' ? 'ಪರಿಶೀಲನೆ ಬಾಕಿ' : currentLang === 'hi' ? 'सत्यापन लंबित' : 'Pending Conclusive Evidence')
                     : `${activeDossier.confidenceScore}% ${currentLang === 'kn' ? 'ಸಾಕ್ಷ್ಯ ಅಂಕ' : currentLang === 'hi' ? 'साक्ष्य अंक' : 'Evidence Score'}`}
                 </span>
               )}
@@ -740,7 +740,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       : 'bg-[#f1f5f9] text-[#475569]';
 
                     const badgeLabel = isItemFake
-                      ? 'FAKE'
+                      ? 'FALSE'
                       : isItemMisleading
                       ? 'MISLEADING'
                       : isItemPartly
@@ -749,7 +749,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       ? 'CONTEXT'
                       : isItemTrue
                       ? 'TRUE'
-                      : 'UNVERIFIED';
+                      : 'PENDING';
 
                     return (
                       <div
@@ -891,7 +891,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
                 <div className="flex flex-col">
                   <span className="font-bold text-xs text-[#0f172a]">{statistics?.truePercent ?? 0}%</span>
-                  <span className="text-[10px] text-[#64748b]">True Claims</span>
+                  <span className="text-[10px] text-[#64748b]">True News</span>
                 </div>
               </div>
 
@@ -901,7 +901,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
                 <div className="flex flex-col">
                   <span className="font-bold text-xs text-[#0f172a]">{statistics?.fakePercent ?? 0}%</span>
-                  <span className="text-[10px] text-[#64748b]">Fake Claims</span>
+                  <span className="text-[10px] text-[#64748b]">False News</span>
                 </div>
               </div>
 
@@ -911,7 +911,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
                 <div className="flex flex-col">
                   <span className="font-bold text-xs text-[#0f172a]">{statistics?.misleadingPercent ?? 0}%</span>
-                  <span className="text-[10px] text-[#64748b]">Misleading</span>
+                  <span className="text-[10px] text-[#64748b]">Legacy Mixed</span>
                 </div>
               </div>
 
@@ -921,7 +921,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
                 <div className="flex flex-col">
                   <span className="font-bold text-xs text-[#0f172a]">{statistics?.unverifiedPercent ?? 0}%</span>
-                  <span className="text-[10px] text-[#64748b]">Unverified</span>
+                  <span className="text-[10px] text-[#64748b]">Pending</span>
                 </div>
               </div>
             </div>
