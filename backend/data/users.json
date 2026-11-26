@@ -1,0 +1,15 @@
+[
+  {
+    "id": "user-1795701697185",
+    "name": "Nayana Umesh",
+    "username": "nayanabumesh22",
+    "email": "nayanabumesh22@gmail.com",
+    "role": "Verified Civic Researcher",
+    "isVerified": true,
+    "authProvider": "password",
+    "passwordSalt": "2841b4d9136fc8c6a123c4cf3b6ac5ac",
+    "passwordHash": "ecc1761c74765b837b624c66ae4c7e3cbfddaeca704cb7a15039a57199b771c5e36532ab96de61d9f49a4d1f0d404c50d50cb4a2e747592d176a4ea695caad57",
+    "createdAt": "2026-11-26T14:01:37.122Z",
+    "updatedAt": "2026-11-26T14:03:07.196Z"
+  }
+]

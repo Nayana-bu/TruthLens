@@ -1,0 +1,24 @@
+{
+  "name": "truthlens-backend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "TruthLens Verify backend REST API, RAG verification pipeline, NLI engine, and persistent JSON/vector storage.",
+  "scripts": {
+    "dev": "SERVE_FRONTEND=false tsx src/server.ts",
+    "build": "tsc --noEmit",
+    "lint": "tsc --noEmit",
+    "start": "NODE_ENV=production SERVE_FRONTEND=false tsx src/server.ts"
+  },
+  "dependencies": {
+    "@google/genai": "^2.4.0",
+    "dotenv": "^17.2.3",
+    "express": "^4.21.2",
+    "tsx": "^4.21.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.14.0",
+    "typescript": "^7.0.2"
+  }
+}

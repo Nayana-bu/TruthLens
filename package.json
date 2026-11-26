@@ -4,12 +4,15 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx server.ts",
-    "build": "vite build",
-    "start": "node server.ts",
-    "preview": "vite preview",
-    "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit"
+    "dev": "tsx backend/src/server.ts",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build": "vite build --config frontend/vite.config.ts",
+    "start": "node backend/src/server.ts",
+    "preview": "vite preview --config frontend/vite.config.ts",
+    "clean": "rm -rf frontend/dist dist server.js",
+    "lint": "tsc -p frontend/tsconfig.json --noEmit && tsc -p backend/tsconfig.json --noEmit",
+    "install:all": "npm install && npm --prefix backend install && npm --prefix frontend install"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

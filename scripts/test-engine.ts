@@ -1,5 +1,5 @@
-import { analyzeClaimText } from '../src/utils/claimAnalyzer.ts';
-import { preprocessQuery, executeMultiQuerySearch, type SearchResultItem } from '../src/utils/ragEngine.ts';
+import { analyzeClaimText } from '../backend/src/services/claimAnalyzer.ts';
+import { preprocessQuery, executeMultiQuerySearch, type SearchResultItem } from '../backend/src/services/ragEngine.ts';
 
 interface TestCase {
   name: string;

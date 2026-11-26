@@ -3,13 +3,13 @@ import {
   extractClaimsAndEntities,
   executeMultiQuerySearch,
   sanitizeExternalUrl,
-} from '../src/utils/ragEngine.ts';
-import { analyzeClaimText } from '../src/utils/claimAnalyzer.ts';
+} from '../backend/src/services/ragEngine.ts';
+import { analyzeClaimText } from '../backend/src/services/claimAnalyzer.ts';
 import {
   computeHybridProjectionVector,
   cosineSimilarityVector,
-} from '../src/utils/vectorStore.ts';
-import type { ClearVerdictStatus, Language } from '../src/types.ts';
+} from '../backend/src/db/vectorStore.ts';
+import type { ClearVerdictStatus, Language } from '../backend/src/types.ts';
 
 type EvalClass = 'REAL' | 'FAKE' | 'UNVERIFIED';
 

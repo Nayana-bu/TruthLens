@@ -3,9 +3,9 @@ import {
   extractSemanticFrame,
   analyzeSemanticFrameWithAmbiguity,
   classifyPairNLI,
-} from '../src/utils/semanticNliEngine.ts';
-import { preprocessQuery, filterAndRerankResults, type SearchResultItem } from '../src/utils/ragEngine.ts';
-import { analyzeClaimText } from '../src/utils/claimAnalyzer.ts';
+} from '../backend/src/services/semanticNliEngine.ts';
+import { preprocessQuery, filterAndRerankResults, type SearchResultItem } from '../backend/src/services/ragEngine.ts';
+import { analyzeClaimText } from '../backend/src/services/claimAnalyzer.ts';
 
 function makeEvidenceItem(
   title: string,

@@ -7,8 +7,8 @@ import {
   evaluateEvidenceForVerdict,
   computeSemanticSimilarity,
   type SearchResultItem,
-} from '../src/utils/ragEngine.ts';
-import { analyzeClaimText } from '../src/utils/claimAnalyzer.ts';
+} from '../backend/src/services/ragEngine.ts';
+import { analyzeClaimText } from '../backend/src/services/claimAnalyzer.ts';
 
 async function runTests() {
   console.log('====================================================================');

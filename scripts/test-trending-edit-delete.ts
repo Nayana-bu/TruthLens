@@ -10,13 +10,13 @@ import {
   updateInvestigation,
   getStatistics,
   type InvestigationRecord,
-} from '../src/db/investigationsDb.ts';
-import { analyzeClaimText } from '../src/utils/claimAnalyzer.ts';
-import { preprocessQuery, executeMultiQuerySearch } from '../src/utils/ragEngine.ts';
+} from '../backend/src/db/investigationsDb.ts';
+import { analyzeClaimText } from '../backend/src/services/claimAnalyzer.ts';
+import { preprocessQuery, executeMultiQuerySearch } from '../backend/src/services/ragEngine.ts';
 import fs from 'fs';
 import path from 'path';
 
-const DB_FILE = path.join(process.cwd(), 'data', 'investigations.json');
+const DB_FILE = path.join(process.cwd(), 'backend', 'data', 'investigations.json');
 
 async function runTests() {
   console.log('\n=============================================================');

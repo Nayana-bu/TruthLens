@@ -7,10 +7,10 @@ import {
   deleteInvestigation,
   getStatistics,
   type InvestigationRecord,
-} from '../src/db/investigationsDb.ts';
-import type { ClaimDossier } from '../src/types.ts';
+} from '../backend/src/db/investigationsDb.ts';
+import type { ClaimDossier } from '../backend/src/types.ts';
 
-const DB_FILE = path.resolve(process.cwd(), 'data/investigations.json');
+const DB_FILE = path.resolve(process.cwd(), 'backend/data/investigations.json');
 
 function createSampleDossier(id: string, claim: string, verdict: any, clearStatus: any): ClaimDossier {
   return {
