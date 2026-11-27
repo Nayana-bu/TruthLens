@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ClaimDossier, EvidenceSource, Language } from '../types';
 import { VoiceVerdictPlayer } from './VoiceVerdictPlayer';
 import { ReportFakeNewsModal } from './ReportFakeNewsModal';
+import { SourceReliabilityRadar } from './SourceReliabilityRadar';
 import {
   getSourceName,
   getSourceCategory,
@@ -495,6 +496,7 @@ export const InvestigationResultsPage: React.FC<InvestigationResultsPageProps> =
           <p className="text-xs sm:text-sm text-[#45464d] leading-relaxed">
             {investigationSummary}
           </p>
+          <SourceReliabilityRadar dossier={dossier} currentLang={activeLang} />
         </div>
 
         {/* Section: Supporting Evidence vs Contradicting Evidence vs Neutral Context (RAG Multi-Stance Analysis) */}

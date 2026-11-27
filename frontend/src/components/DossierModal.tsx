@@ -3,6 +3,7 @@ import { ClaimDossier, EvidenceSource, Language } from '../types';
 import { UI_TRANSLATIONS } from '../data/mockData';
 import { ReportFakeNewsModal } from './ReportFakeNewsModal';
 import { speakText, stopSpeech } from '../utils/speechEngine';
+import { SourceReliabilityRadar } from './SourceReliabilityRadar';
 import {
   getSourceName,
   getSourceCategory,
@@ -562,6 +563,7 @@ export const DossierModal: React.FC<DossierModalProps> = ({
                 {dossier.debunkExplanation[selectedLang] || dossier.debunkExplanation.en}
               </p>
             </div>
+            <SourceReliabilityRadar dossier={dossier} currentLang={selectedLang} />
           </div>
 
           {/* 5. Official Corroborating Repositories Grid (Record Corroboration) */}

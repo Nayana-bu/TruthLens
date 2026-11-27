@@ -34,6 +34,11 @@ truthlens-verify/
 │       │   ├── sourceTranslator.ts  # Localized source badge/snippet translation helpers
 │       │   └── speechEngine.ts   # Backend Gemini TTS player + browser SpeechSynthesis fallback
 │       └── components/           # Modular UI views, modals, and investigation tabs
+│           ├── DashboardView.tsx # Main investigation workspace, evidence grid & trending cards
+│           ├── VerificationTimeline.tsx # Interactive step-by-step audit timeline for active dossier
+│           ├── InvestigationTab.tsx # Archive history view & split-view claim comparison launcher
+│           ├── ClaimSplitCompareView.tsx # Side-by-side NLI comparator against archived claims
+│           └── DossierModal.tsx  # Full localized forensic dossier modal & WhatsApp counter-note
 │
 ├── backend/                      # Independent Node.js + Express + Gemini RAG API server
 │   ├── package.json              # Backend-only dependencies & scripts
@@ -187,7 +192,7 @@ npx tsx scripts/test-trending-edit-delete.ts
 4. **Input Extraction (`urlExtractorService.ts` / `geminiService.ts`)** extracts readable text from submitted URLs or performs Gemini multimodal OCR on images/PDFs when `GEMINI_API_KEY` is configured.
 5. **RAG & NLI Pipeline (`investigationPipelineService.ts` + `ragEngine.ts` + `semanticNliEngine.ts` + `vectorStore.ts`)**:
    - Normalizes multilingual spelling/typos (`en`/`kn`/`hi`), extracts named entities and sub-claims, and detects semantic frames (event type, tense/modality, cardinality, negation).
-   - Queries persistent `backend/data/vector_index.json` plus live authoritative web sources (Wikipedia REST, DuckDuckGo, PIB Fact Check / Google News RSS / Gemini Search grounding).
+   - Queries persistent `backend/data/vector_index.json` plus live authoritative web sources (Wikipedia REST, DuckDuckGo Instant Answer API via `fetchDuckDuckGoInstant`, PIB Fact Check / Google News RSS, and Gemini Search grounding).
    - Reranks retrieved snippets using semantic similarity + deterministic/Gemini NLI (`ENTAILMENT`, `CONTRADICTION`, `NEUTRAL`).
    - Upserts newly retrieved documents back into `backend/data/vector_index.json`.
 6. **Dossier Synthesis & Persistence (`claimAnalyzer.ts` + `geminiService.ts` + `investigationsDb.ts`)**:
@@ -202,3 +207,14 @@ npx tsx scripts/test-trending-edit-delete.ts
 - **`POST /api/auth/login`**, **`POST /api/auth/register`**, **`POST /api/auth/google`**, **`POST /api/auth/reset-password`**, **`GET /api/auth/session`** — Account authentication backed by `backend/data/users.json` + HMAC tokens.
 - **`POST /api/tts`** — Backend neural audio synthesis via Gemini TTS (`gemini-2.5-flash-preview-tts`), with client Web Speech API fallback.
 - **`POST /api/report`** — Cybercrime / PIB fact-check escalation ticket submission.
+
+---
+
+## 7. Interactive Verification Timeline (`DashboardView` + `VerificationTimeline`)
+
+Inside **`DashboardView.tsx`** (directly beneath *Official Evidences & Sources*), **`VerificationTimeline.tsx`** renders a chronological, interactive audit trail of the exact verification steps executed for the currently selected `ClaimDossier`—strictly derived from persisted dossier fields without fabricated timestamps or mock data:
+
+1. **Stage Milestone Strip & Vertical Stepper**: Displays each pipeline checkpoint (`Query Preprocessor` → `RAG Evidence Retriever` → `Semantic NLI & Evidence Cross-Check` → `Verification Engine`) with color-coded status nodes matching the claim's real outcome (`REAL`, `FAKE`, `MISLEADING`, `PARTLY_TRUE`, `CONTEXT_MISSING`, or `UNVERIFIED`).
+2. **Claim Ingestion & Semantic Extraction**: Surfaces the submission mode (`text`, `ocr`, `url`), `originVector`, extracted sub-claims (`extractedClaims`), named entities (`people`, `organizations`, `locations`, `dates`, `amounts`), and `semanticFrame` attributes (`eventType`, `modality`, `polarity`, `tense`).
+3. **CRAG & Multi-Source Retrieval Trace**: Exposes query counts (`searchQueryCount`), Corrective RAG pass count (`cragIterations`), full `cragTrace` logs, deduplication/noise-filtering metrics, and `groundingInfo.queries`.
+4. **Semantic NLI Cross-Check & Final Assessment**: Summarizes supporting (`ENTAILMENT`), contradicting (`CONTRADICTION`), and neutral source counts with publication/retrieval dates and validated external links (`http`/`https`), alongside `officialRefId`, `confidenceScore`, `evidenceStrengthLabel`, and `verifiedAt` in **English (`en`)**, **Kannada (`kn`)**, and **Hindi (`hi`)**. Users can inspect steps individually or toggle **Inspect All** / **Collapse**.

@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import type { ClaimDossier, Language, SubmissionMode, InvestigationStatistics } from '../types';
 import { speakText, stopSpeech } from '../utils/speechEngine';
 import { ReportFakeNewsModal } from './ReportFakeNewsModal';
+import { VerificationTimeline } from './VerificationTimeline';
+import { SourceReliabilityRadar } from './SourceReliabilityRadar';
 
 interface DashboardViewProps {
   currentLang: Language;
@@ -685,6 +687,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             )}
           </div>
 
+          {/* 3B. VERIFICATION TIMELINE */}
+          <VerificationTimeline dossier={activeDossier} currentLang={currentLang} />
+
           {/* 4. TRENDING VERIFICATIONS HORIZONTAL CAROUSEL */}
           <div className="bg-white rounded-2xl border border-[#e2e8f0] p-5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col gap-3.5">
             <div className="flex items-center justify-between pb-2 border-b border-[#f1f5f9]">
@@ -950,6 +955,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     ? 'कोई सक्रिय जांच चयनित नहीं है। सारांश हेतु दावा दर्ज करें।'
                     : 'No active claim investigated yet. Enter news or a claim above to generate an evidence-backed summary.')}
             </p>
+            {activeDossier && (
+              <SourceReliabilityRadar
+                dossier={activeDossier}
+                currentLang={currentLang}
+                compact={true}
+              />
+            )}
           </div>
 
           {/* 3. KEY FINDINGS CARD */}
